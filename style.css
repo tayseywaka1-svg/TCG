@@ -1,0 +1,82 @@
+body {
+  font-family: system-ui, Arial;
+  background: #f6f7fb;
+  margin: 12px;
+  color: #111;
+}
+h1 { margin: 0 0 12px; }
+.row { display: flex; gap: 12px; align-items: flex-start; }
+.panel {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.panel.small { width: 260px; }
+.card {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  padding: 6px;
+  margin: 6px;
+  width: 120px;
+  text-align: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+.card.small { width: 90px; padding: 4px; font-size: 12px; }
+.btn {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #333;
+  cursor: pointer;
+  margin: 4px;
+}
+.btn.primary { background: #111; color: #fff; border-color: #111; }
+.muted { color: #666; font-size: 13px; }
+.fieldCardBox {
+  background: #fff8dc;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #d7c59a;
+}
+.hand { min-height: 80px; }
+.zone {
+  min-height: 80px;
+  padding: 8px;
+  border: 1px dashed #ddd;
+  border-radius: 6px;
+}
+input[type=text] {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 220px;
+}
+.deckRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+#modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+}
+#modal .box {
+  background: #fff;
+  padding: 18px;
+  border-radius: 8px;
+  min-width: 300px;
+  text-align: center;
+}
+.new { color: #c00; font-weight: 700; }
+.statusSmall { font-size: 13px; color: #444; }
