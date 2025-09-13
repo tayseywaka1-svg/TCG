@@ -244,10 +244,10 @@ function updateTop(){ document.getElementById("packCount").textContent = packCou
 function ensureInitial(){
   loadAll();
   if(Object.keys(collection).length === 0 && packCount === 0 && shardCount === 0){
-    for(let i=0;i<10;i++) openPackInternal(true); // コレクションに追加するだけ
-    packCount = 0; // 最初の10パックは配布済みとしてパック欄に残さない
+    for(let i=0;i<50;i++) openPackInternal(true); // コレクションに追加するだけ
+    packCount = 0; // 最初の50パックは配布済みとしてパック欄に残さない
     saveAll();
-    alert("初期10パックを配布しました（コレクションに追加）");
+    alert("初期50パックを配布しました（コレクションに追加）");
   }
   checkDaily();
   updateTop();
