@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>歴史カードゲーム — 完全試作（オフライン）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{--bg:#0f172a;--card:#f8fafc;--muted:#94a3b8;--accent:#ef4444}
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#07102a 0%,#0b1227 100%);color:#e6eef8}
+  .wrap{max-width:1100px;margin:18px auto;padding:18px}
+  header{display:flex;align-items:center;gap:12px}
+  h1{margin:0;font-size:20px}
+  #topbar{display:flex;gap:12px;align-items:center;margin-top:8px}
+  .panel{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);padding:12px;border-radius:8px}
+  #boards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .side{min-height:220px}
+  .row{display:flex;gap:8px;align-items:center}
+  .card{width:150px;background:linear-gradient(180deg,#ffffff 0%,#f1f5f9 100%);color:#0b1227;border-radius:6px;padding:8px;border:2px solid #0f172a;box-shadow:0 6px 18px rgba(2,6,23,0.6);font-size:12px}
+  .card .name{font-weight:700;margin-bottom:6px}
+  .muted{color:var(--muted)}
+  #hand, #bench, #field, #enemy-field{display:flex;gap:8px;flex-wrap:wrap}
+  button{background:#0ea5e9;border:none;color:#042339;padding:8px 10px;border-radius:6px;cursor:pointer}
+  button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.08);color:#fff}
+  .small{font-size:12px;padding:6px 8px}
+  .hpbar{height:8px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden}
+  .hpfill{height:100%;background:linear-gradient(90deg,#10b981,#06b6d4);}
+  .log{height:180px;overflow:auto;background:rgba(0,0,0,0.25);padding:8px;border-radius:6px;font-size:13px}
+  .controls{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .card.clickable{cursor:pointer}
+  .assigned{font-weight:700;color:#0b1227;background:#fef3c7;padding:2px 6px;border-radius:4px;margin-top:6px;display:inline-block}
+  .rarity{font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.06);display:inline-block}
+  footer{margin-top:12px;color:var(--muted);font-size:13px}
+  @media(max-width:900px){.card{width:130px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>歴史カードゲーム — 完全試作</h1>
+    <div class="muted">（オフライン試作・デモ）</div>
+  </header>
+
+  <div id="topbar" class="panel">
+    <div>プレイヤーHP: <strong id="player-hp">10000</strong></div>
+    <div>敵HP: <strong id="enemy-hp">10000</strong></div>
+    <div>ターン: <strong id="turn">1</strong></div>
+    <div>偉人パワー: <strong id="player-power">0</strong></div>
+    <div>山札: <strong id="deck-count">0</strong></div>
+    <div>墓地: <strong id="grave-count">0</strong></div>
+  </div>
+
+  <div id="boards">
+    <div class="panel side">
+      <div class="row"><strong>あなたの領域</strong></div>
+      <div style="margin-top:8px">
+        <div class="muted">手札（クリックでベンチへ）</div>
+        <div id="hand"></div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="muted">ベンチ（最大3、クリックで場へ）</div>
+        <div id="bench"></div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="muted">場（偉人カード、クリックで攻撃/割り振り/入れ替え）</div>
+        <div id="field"></div>
+      </div>
+
+      <div class="controls">
+        <button id="endTurn">ターン終了</button>
+        <button id="coinToss" class="secondary small">コイントス（先攻/後攻）</button>
+        <button id="reset" class="secondary small">初期化</button>
+      </div>
+    </div>
+
+    <div class="panel side">
+      <div class="row"><strong>敵の領域（簡易AI）</strong></div>
+      <div style="margin-top:8px">
+        <div class="muted">場</div>
+        <div id="enemy-field"></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="muted">ログ</div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="muted">ルール要点: デッキ50枚・手札5（偉人1枚は必ず含む）・ベンチ3・場3・偉人パワーはターン開始時+1・偉人パワー2で入れ替え・技は偉人パワーを指定カードに割当てて発動。</footer>
+</div>
+
+<script>
+// ----- カードデータ（ユーザーが定義した偉人カードを反映） -----
+const baseCards = [
+  {name:"織田信長",attack:2000,hp:3000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"人間五十年",skill_effect:"相手のトラップカードの影響を受けずに攻撃できる",trait_name:"",trait_effect:""},
+  {name:"豊臣秀吉",attack:500,hp:3000,power_cost:1,type:"偉人",rarity:"UR",skill_name:"大返し",skill_effect:"相手に2回ダメージを与える。もし、1回目の攻撃で相手の偉人カードがなくなった場合、相手はベンチから偉人カードを出すことができず、相手に直接ダメージを与える",trait_name:"千成瓢箪（せんなりびょうたん）",trait_effect:"自分のターンに1回使える。山札からカードを上から2枚引き、手札に加える"},
+  {name:"徳川家康",attack:500,hp:10000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"三つ葵",skill_effect:"この技を受けた相手の攻撃力を-100する",trait_name:"総大将",trait_effect:"自分のベンチにいる偉人カードの数✖️100だけ、毎ターンHPを回復する"},
+  {name:"明智光秀",attack:1000,hp:1500,power_cost:3,type:"偉人",rarity:"UR",skill_name:"桔梗紋",skill_effect:"自分のベンチにいる明智姓の人の数✖️1000のダメージ",trait_name:"本能寺の悲劇",trait_effect:"自分のターンに1回使える。自分の手札から織田信長を1枚墓地に送り、山札から明智光秀を1枚引く。隠し効果：相手の織田信長に与えるダメージをプラス10000する"},
+  {name:"武田信玄",attack:1500,hp:5000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"風林火山",skill_effect:"この技を使うたびに、自分の受けるダメージが20ずつ減る。この効果は重複する",trait_name:"虎",trait_effect:"自分のベンチにいる偉人カードの数✖️20ずつ受けるダメージが減る"},
+  {name:"上杉謙信",attack:1500,hp:1000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"毘沙門天",skill_effect:"この技を使うたびに、自分の与えるダメージが20ずつ増える",trait_name:"龍",trait_effect:"自分のベンチにいる偉人カードの数✖️20ずつ与えるダメージが増える"},
+  {name:"毛利元就",attack:500,hp:1000,power_cost:4,type:"偉人",rarity:"UR",skill_name:"謀",skill_effect:"ダメージを与える",trait_name:"厳島の攻防",trait_effect:"相手のターン開始時に発動する。コイントスをし、裏が出ると相手は攻撃できなくなる"},
+  {name:"ナポレオン",attack:2000,hp:2000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"革命",skill_effect:"相手のレアリティが下から何番目か✖️100ダメージ",trait_name:"大陸封鎖令",trait_effect:"相手の偉人を逃げれなくする"}
+];
+
+// helper: clone card instance with runtime fields
+function createInstance(card){
+  return Object.assign({}, card, {cur_hp: card.hp, assignedPower:0, usedTraitThisTurn:false, usedSkillThisTurn:false});
+}
+
+// Build deck (50 cards) by repeating user cards (in real scenario user will supply full 50)
+function buildDeck(){
+  const deck = [];
+  for(let i=0;i<50;i++){
+    const source = baseCards[i % baseCards.length];
+    deck.push(createInstance(source));
+  }
+  // simple shuffle
+  for(let i=deck.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];
+  }
+  return deck;
+}
+
+// Game state
+let player = {hp:10000,deck:[],hand:[],bench:[],field:[],power:0,grave:[]};
+let enemy = {hp:10000,deck:[],bench:[],field:[],grave:[]};
+let turn=1;let playerTurn=true;let coinTossResult=null;let benchBlockForTurn=false; // block bench summon after Toyotomi
+
+// UI refs
+const handDiv=document.getElementById('hand');
+const benchDiv=document.getElementById('bench');
+const fieldDiv=document.getElementById('field');
+const enemyFieldDiv=document.getElementById('enemy-field');
+const logDiv=document.getElementById('log');
+
+function log(s){
+  const p=document.createElement('div');p.textContent=s;logDiv.prepend(p);
+}
+
+function updateInfo(){
+  document.getElementById('player-hp').innerText=player.hp;
+  document.getElementById('enemy-hp').innerText=enemy.hp;
+  document.getElementById('turn').innerText=turn;
+  document.getElementById('player-power').innerText=player.power;
+  document.getElementById('deck-count').innerText=player.deck.length;
+  document.getElementById('grave-count').innerText=player.grave.length;
+}
+
+// Rendering functions
+function renderHand(){
+  handDiv.innerHTML='';
+  player.hand.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='card clickable';
+    d.innerHTML=`<div class="name">${c.name} <span class="rarity">${c.rarity}</span></div>
+                 <div>攻:${c.attack} HP:${c.cur_hp}</div>
+                 <div class="muted">コスト:${c.power_cost}</div>`;
+    d.onclick=()=>playToBench(i);
+    handDiv.appendChild(d);
+  });
+}
+function renderBench(){
+  benchDiv.innerHTML='';
+  player.bench.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='card clickable';
+    d.innerHTML=`<div class="name">${c.name}</div><div>攻:${c.attack} HP:${c.cur_hp}</div>`;
+    d.onclick=()=>benchToField(i);
+    benchDiv.appendChild(d);
+  });
+}
+function renderField(){
+  fieldDiv.innerHTML='';
+  player.field.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='card clickable';
+    d.innerHTML=`<div class="name">${c.name} <span class="rarity">${c.rarity}</span></div>
+                 <div>攻:${c.attack} HP:${c.cur_hp}</div>
+                 <div>割:${c.assignedPower} / 必:${c.power_cost}</div>
+                 <div style="margin-top:6px"><button class="small" onclick="assignPower(${i})">+1偉人P</button>
+                 <button class="small" onclick="attemptAttack(${i})">攻撃/技</button>
+                 <button class="small" onclick="attemptSwap(${i})">入れ替え(2P)</button></div>`;
+    fieldDiv.appendChild(d);
+  });
+}
+function renderEnemyField(){
+  enemyFieldDiv.innerHTML='';
+  enemy.field.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='card';
+    d.innerHTML=`<div class="name">${c.name} <span class="rarity">${c.rarity}</span></div>
+                 <div>攻:${c.attack} HP:${c.cur_hp}</div>`;
+    enemyFieldDiv.appendChild(d);
+  });
+}
+
+// Actions
+function drawFor(playerObj){
+  if(playerObj.deck.length===0) return false;
+  const c = playerObj.deck.shift();
+  // ensure deep clone state for player
+  playerObj.hand = playerObj.hand || [];
+  if(playerObj===player) playerObj.hand.push(c); else playerObj.hand.push(c);
+  return true;
+}
+
+// Ensure initial hand has at least one 偉人
+function initialDraw(){
+  player.hand=[]; for(let i=0;i<5;i++) drawFor(player);
+  // if no 偉人 in hand, guarantee one by drawing from deck until get偉人 then replace last card
+  if(!player.hand.some(c=>c.type==='偉人')){
+    for(let i=0;i<player.deck.length;i++){
+      if(player.deck[i].type==='偉人'){
+        player.hand[0]=player.deck.splice(i,1)[0];break;
+      }
+    }
+  }
+}
+
+function playToBench(handIndex){
+  const c = player.hand[handIndex];
+  if(!c) return; if(c.type!=='偉人'){alert('現在は偉人のみを手札からベンチに置けます');return}
+  if(player.bench.length>=3){alert('ベンチは3枚まで');return}
+  player.bench.push(c); player.hand.splice(handIndex,1); renderHand(); renderBench(); log(`${c.name} をベンチに配置`); updateInfo();
+}
+
+function benchToField(idx){
+  if(player.field.length>=3){alert('場は最大3枚です');return}
+  if(benchBlockForTurn){alert('現在ベンチから場へ出すことは封じられています（大返し効果）');return}
+  const c=player.bench[idx]; if(!c) return;
+  player.field.push(c); player.bench.splice(idx,1); renderBench(); renderField(); log(`${c.name} を場に出した`); updateInfo();
+}
+
+function assignPower(fieldIdx){
+  if(player.power<=0){alert('偉人パワーがありません');return}
+  const c=player.field[fieldIdx]; if(!c) return;
+  player.power--; c.assignedPower++; renderField(); updateInfo(); log(`${c.name} に偉人パワー1を割り当てた`);
+}
+
+function attemptSwap(fieldIdx){
+  if(player.power<2){alert('偉人パワーが2必要です');return}
+  if(player.bench.length===0){alert('ベンチにカードがありません');return}
+  // swap with first bench card for simplicity, but let user confirm
+  const f = player.field[fieldIdx]; const b = player.bench[0];
+  if(!f||!b) return; player.power-=2; player.field[fieldIdx]=b; player.bench[0]=f; renderField(); renderBench(); updateInfo(); log(`${f.name} と ${b.name} を入れ替えた（偉人P -2）`);
+}
+
+// Attack / skill execution
+function attemptAttack(fieldIdx){
+  const attacker = player.field[fieldIdx]; if(!attacker) return;
+  // require assignedPower >= power_cost to perform skill/attack
+  if(attacker.assignedPower < attacker.power_cost){
+    if(!confirm('偉人パワーがコスト分割り当てられていません。通常攻撃（攻撃力分）でよければ実行しますか？')) return;
+    normalAttackFrom(fieldIdx);
+    return;
+  }
+  // consume cost
+  attacker.assignedPower -= attacker.power_cost;
+  attacker.usedSkillThisTurn = true;
+  useSkill(attacker, true);
+}
+
+function normalAttackFrom(fieldIdx){
+  const attacker = player.field[fieldIdx]; if(!attacker) return;
+  // choose target: enemy field first if exists: choose first, else direct
+  if(enemy.field.length>0){
+    const target = enemy.field[0];
+    applyDamageToCard(target, attacker.attack, attacker);
+    log(`${attacker.name} が ${target.name} を攻撃（${attacker.attack}）`);
+    if(target.cur_hp<=0){
+      log(`${target.name} を破壊した`); enemy.field.splice(0,1); enemy.grave.push(target);
+    }
+  } else {
+    enemy.hp -= attacker.attack; log(`${attacker.name} が相手に直接 ${attacker.attack} ダメージ`);
+    if(enemy.hp<=0){endGame('win');}
+  }
+  renderEnemyField(); renderField(); updateInfo();
+}
+
+function applyDamageToCard(target, dmg, source){
+  // consider modifiers: e.g., 明智 vs 織田 hidden
+  if(source && source.name==='明智光秀' && target.name==='織田信長') dmg += 10000;
+  // Tokugawa reduces incoming attack via trait: if target is on player's side earlier handled
+  target.cur_hp -= dmg;
+}
+
+function useSkill(card, isPlayer){
+  // many skills are described in natural language; we'll implement behaviors for the specific cards provided.
+  const name = card.name;
+  if(name==='織田信長'){
+    // 人間五十年 — 相手のトラップ影響を無視して直接攻撃可能: simply do a normal attack ignoring trap flags (traps not implemented), do direct hit to first enemy field or direct
+    if(enemy.field.length>0){
+      const target=enemy.field[0]; applyDamageToCard(target, card.attack, card); log(`${card.name} が《人間五十年》で ${target.name} を攻撃（${card.attack}）`);
+      if(target.cur_hp<=0){log(`${target.name} を破壊`); enemy.grave.push(target); enemy.field.splice(0,1);}      
+    } else {enemy.hp -= card.attack; log(`${card.name} が敵に直接 ${card.attack} ダメージ（トラップ無視）`); if(enemy.hp<=0) endGame('win');}
+  }
+  else if(name==='豊臣秀吉'){
+    // 大返し: 相手に2回ダメージ。 if first destroys target偉人, prevent bench deployment and extra direct damage
+    if(enemy.field.length>0){
+      let target=enemy.field[0];
+      applyDamageToCard(target, card.attack, card); log(`${card.name} の《大返し》1回目: ${target.name} に ${card.attack}`);
+      if(target.cur_hp<=0){ log(`1回目で ${target.name} を破壊`); enemy.field.splice(0,1); enemy.grave.push(target); benchBlockForTurn=true; log(`相手はベンチから出せなくなった（大返し効果）`);
+        // apply second hit to player's enemy directly
+        enemy.hp -= card.attack; log(`大返しの2回目は直接ダメージ ${card.attack}`);
+        if(enemy.hp<=0) endGame('win');
+      } else {
+        // second hit to remaining target (or if survived, apply again)
+        applyDamageToCard(target, card.attack, card); log(`${card.name} の《大返し》2回目: ${target.name} に ${card.attack}`);
+        if(target.cur_hp<=0){enemy.grave.push(target); enemy.field.splice(0,1); log(`${target.name} を破壊`);}      }
+    } else {
+      // no enemy field -> two direct hits
+      enemy.hp -= card.attack*2; log(`${card.name} の《大返し》で敵に ${card.attack*2} ダメージ（直接）`); if(enemy.hp<=0) endGame('win');
+    }
+  }
+  else if(name==='徳川家康'){
+    // 三つ葵：対象の攻撃力を-100
+    if(enemy.field.length>0){ const t=enemy.field[0]; t.attack = Math.max(0,t.attack-100); log(`${card.name} の《三つ葵》で ${t.name} の攻撃力が-100された`);} else { log(`${card.name} の《三つ葵》は対象がいないため発動できません`); }
+  }
+  else if(name==='明智光秀'){
+    // 桔梗紋: 自分のベンチにいる明智姓の人数✖️1000のダメージを敵に（場またはプレイヤー）
+    const cnt = player.bench.filter(x=>x.name && x.name.startsWith('明智')).length;
+    const dmg = cnt*1000 + card.attack;
+    if(enemy.field.length>0){ const t=enemy.field[0]; applyDamageToCard(t,dmg,card); log(`${card.name} の《桔梗紋》で ${t.name} に ${dmg} ダメージ`); if(t.cur_hp<=0){enemy.grave.push(t); enemy.field.splice(0,1); log(`${t.name} を破壊`);} }
+    else { enemy.hp -= dmg; log(`${card.name} の《桔梗紋》で敵に ${dmg} ダメージ`); if(enemy.hp<=0) endGame('win'); }
+  }
+  else if(name==='武田信玄'){
+    // 風林火山: 自分の受けるダメージが20ずつ減る（stack）。 We'll store a buff on card
+    card._damageReduction = (card._damageReduction||0) + 20; log(`${card.name} の《風林火山》で受けるダメージが20減少（累積）`);
+  }
+  else if(name==='上杉謙信'){
+    // 毘沙門天: 自分の与ダメが20増える（stack)
+    card._damageBonus = (card._damageBonus||0) + 20; log(`${card.name} の《毘沙門天》で与ダメが20増加（累積）`);
+  }
+  else if(name==='毛利元就'){
+    // 謀: 単純ダメージ = attack
+    if(enemy.field.length>0){const t=enemy.field[0]; applyDamageToCard(t,card.attack,card); log(`${card.name} の《謀》で ${t.name} に ${card.attack} ダメージ`); if(t.cur_hp<=0){enemy.field.splice(0,1);enemy.grave.push(t);log(`${t.name} を破壊`)} } else {enemy.hp -= card.attack; log(`${card.name} の《謀》で敵に ${card.attack} ダメージ`); if(enemy.hp<=0) endGame('win');}
+  }
+  else if(name==='ナポレオン'){
+    // 革命: 相手のレアリティが下から何番目か✖️100ダメージ
+    if(enemy.field.length>0){ const t = enemy.field[0]; const rarities=['C','R','EX','SR','SSR','UR']; const idx = rarities.indexOf(t.rarity); const pos = (idx>=0? idx+1:3); const dmg = pos*100; applyDamageToCard(t,dmg,card); log(`${card.name} の《革命》で ${t.name} に ${dmg} ダメージ（レアリティ計算）`); if(t.cur_hp<=0){enemy.field.splice(0,1);enemy.grave.push(t);log(`${t.name} を破壊`)} } else { log('革命の対象がいません'); }
+  }
+  // other generic/default: perform normal attack
+  else { normalAttackFrom(player.field.indexOf(card)); }
+  renderField(); renderEnemyField(); updateInfo();
+}
+
+// Damage application helper with reductions and bonuses
+function computeDamage(base, source, target){
+  let dmg = base;
+  if(source && source._damageBonus) dmg += source._damageBonus;
+  if(target && target._damageReduction) dmg = Math.max(0, dmg - target._damageReduction);
+  return dmg;
+}
+
+// Turn progression
+function startPlayerTurn(){
+  playerTurn = true; turn++;
+  // reset per-turn flags
+  player.field.forEach(c=>{c.usedTraitThisTurn=false; c.usedSkillThisTurn=false;});
+  // gain偉人パワー
+  player.power += 1;
+  // draw one card
+  if(!drawFor(player)){ log('山札が空です — ドローできません'); }
+  // Tokugawa trait heal
+  const tok = player.field.find(c=>c.name==='徳川家康');
+  if(tok){ const heal = player.bench.length * 100; player.hp = Math.min(10000, player.hp + heal); if(heal>0) log(`徳川家康の特性で ${heal} HP 回復`); }
+  // reset benchBlock
+  benchBlockForTurn=false;
+  renderHand(); renderBench(); renderField(); renderEnemyField(); updateInfo();
+}
+
+function endTurn(){
+  // check win/lose
+  if(player.hp<=0) {endGame('lose'); return}
+  if(enemy.hp<=0) {endGame('win'); return}
+  // enemy behaves simply: draw, place to bench if possible, possibly move to field, then attack
+  enemyAIAction();
+  // enemy turn effects: e.g., 毛利の厳島 coin toss on player's turn start — earlier defined for opponent; we execute at appropriate times
+  // back to player
+  startPlayerTurn();
+}
+
+function endGame(result){
+  if(result==='win'){ alert('あなたの勝ち！'); log('=== 勝利 ==='); }
+  else { alert('あなたの負け...'); log('=== 敗北 ==='); }
+  // lock UI by disabling buttons
+}
+
+// Simple enemy AI
+function enemyAIAction(){
+  // enemy draws one if possible
+  if(enemy.deck.length>0){ const c=enemy.deck.shift(); enemy.bench.push(c); log(`敵がカードをベンチに配置しました (${c.name})`);}  
+  // move first bench to field if space
+  if(enemy.bench.length>0 && enemy.field.length<3){ const c=enemy.bench.shift(); enemy.field.push(c); log(`敵が ${c.name} を場に出した`); }
+  // attack with first field card
+  if(enemy.field.length>0){ const a = enemy.field[0]; // if has assignedPower logic for enemy ignore: simple normal attack
+    if(player.field.length>0){ const t = player.field[0]; const dmg = a.attack; // consider 武田/上杉 reductions/bonus
+      const final = computeDamage(dmg, a, t);
+      t.cur_hp -= final; log(`敵の ${a.name} が ${t.name} を攻撃: ${final}`);
+      if(t.cur_hp<=0){ log(`${t.name} を破壊された`); player.grave.push(t); player.field.splice(0,1); }
+    } else { player.hp -= a.attack; log(`敵の ${a.name} があなたに直接 ${a.attack} ダメージ`); if(player.hp<=0) endGame('lose'); }
+  }
+  renderEnemyField(); renderField(); updateInfo();
+}
+
+// Buttons
+document.getElementById('endTurn').onclick = ()=>{ endTurn(); };
+document.getElementById('coinToss').onclick = ()=>{
+  const r = Math.random() < 0.5 ? '表(先攻)' : '裏(後攻)'; coinTossResult = r; alert('コイントス: '+r); log('コイントス: '+r);
+};
+document.getElementById('reset').onclick = ()=>{ initGame(); };
+
+// Initialization
+function initGame(){
+  player = {hp:10000,deck:buildDeck(),hand:[],bench:[],field:[],power:0,grave:[]};
+  enemy = {hp:10000,deck:buildDeck(),bench:[],field:[],grave:[]};
+  turn=0; logDiv.innerHTML=''; benchBlockForTurn=false; coinTossResult=null;
+  initialDraw(); renderHand(); renderBench(); renderField(); renderEnemyField(); updateInfo(); log('ゲームを初期化しました');
+}
+
+// Expose functions used in generated HTML buttons inside card markup
+window.assignPower = assignPower;
+window.attemptAttack = attemptAttack;
+window.attemptSwap = attemptSwap;
+
+initGame();
+</script>
+</body>
+</html>
