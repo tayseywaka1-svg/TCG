@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>歴史カードゲーム試作</title>
+<style>
+  body { font-family: sans-serif; }
+  #player, #enemy { border: 1px solid #000; padding: 10px; margin: 10px; }
+  .card { border: 1px solid #333; padding: 5px; margin: 5px; display: inline-block; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h1>歴史カードゲーム（試作）</h1>
+
+<div id="info">
+  <p>プレイヤーHP: <span id="player-hp">10000</span></p>
+  <p>敵HP: <span id="enemy-hp">10000</span></p>
+  <p>ターン: <span id="turn">1</span></p>
+  <p>偉人パワー: <span id="player-power">0</span></p>
+</div>
+
+<h2>手札</h2>
+<div id="hand"></div>
+
+<h2>ベンチ</h2>
+<div id="bench"></div>
+
+<h2>場</h2>
+<div id="field"></div>
+
+<button id="endTurn">ターン終了</button>
+
+<script>
+// カードデータ（これまで作った偉人カード例）
+const cards = [
+  {name:"織田信長",attack:2000,hp:3000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"人間五十年",skill_effect:"相手のトラップカードの影響を受けずに攻撃できる",trait_name:"",trait_effect:""},
+  {name:"豊臣秀吉",attack:500,hp:3000,power_cost:1,type:"偉人",rarity:"UR",skill_name:"大返し",skill_effect:"相手に2回ダメージを与える。もし、1回目の攻撃で相手の偉人カードがなくなった場合、相手はベンチから偉人カードを出すことができず、相手に直接ダメージを与える",trait_name:"千成瓢箪（せんなりびょうたん）",trait_effect:"自分のターンに1回使える。山札からカードを上から2枚引き、手札に加える"},
+  {name:"徳川家康",attack:500,hp:10000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"三つ葵",skill_effect:"この技を受けた相手の攻撃力を-100する",trait_name:"総大将",trait_effect:"自分のベンチにいる偉人カードの数✖️100だけ、毎ターンHPを回復する"},
+  {name:"明智光秀",attack:1000,hp:1500,power_cost:3,type:"偉人",rarity:"UR",skill_name:"桔梗紋",skill_effect:"自分のベンチにいる明智姓の人の数✖️1000のダメージ",trait_name:"本能寺の悲劇",trait_effect:"自分のターンに1回使える。自分の手札から織田信長を1枚墓地に送り、山札から明智光秀を1枚引く。隠し効果：相手の織田信長に与えるダメージをプラス10000する"},
+  {name:"武田信玄",attack:1500,hp:5000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"風林火山",skill_effect:"この技を使うたびに、自分の受けるダメージが20ずつ減る。この効果は重複する",trait_name:"虎",trait_effect:"自分のベンチにいる偉人カードの数✖️20ずつ受けるダメージが減る"},
+  {name:"上杉謙信",attack:1500,hp:1000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"毘沙門天",skill_effect:"この技を使うたびに、自分の与えるダメージが20ずつ増える",trait_name:"龍",trait_effect:"自分のベンチにいる偉人カードの数✖️20ずつ与えるダメージが増える"},
+  {name:"毛利元就",attack:500,hp:1000,power_cost:4,type:"偉人",rarity:"UR",skill_name:"謀",skill_effect:"ダメージを与える",trait_name:"厳島の攻防",trait_effect:"相手のターン開始時に発動する。コイントスをし、裏が出ると相手は攻撃できなくなる"},
+  {name:"ナポレオン",attack:2000,hp:2000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"革命",skill_effect:"相手のレアリティが下から何番目か✖️100ダメージ",trait_name:"大陸封鎖令",trait_effect:"相手の偉人を逃げれなくする"}
+];
+
+// プレイヤー情報
+let player = {hp:10000, hand:[], bench:[], field:[], power:0, deck:[...cards]};
+let enemy = {hp:10000};
+let turn = 1;
+
+// ドロー
+function drawCard() {
+  if(player.deck.length === 0) return;
+  player.hand.push(player.deck.shift());
+  renderHand();
+}
+
+// 手札表示
+function renderHand() {
+  const handDiv = document.getElementById("hand");
+  handDiv.innerHTML = "";
+  player.hand.forEach((card,index)=>{
+    const div = document.createElement("div");
+    div.className="card";
+    div.innerHTML=`${card.name}<br>攻:${card.attack} HP:${card.hp}<br>コスト:${card.power_cost}`;
+    div.onclick=()=>playCard(index);
+    handDiv.appendChild(div);
+  });
+}
+
+// ベンチにカードを置く
+function playCard(index){
+  const card = player.hand[index];
+  if(card.type==="偉人"){
+    if(player.bench.length<3){
+      player.bench.push(card);
+      player.hand.splice(index,1);
+      renderHand();
+      renderBench();
+    }else{
+      alert("ベンチは3枚までです");
+    }
+  }
+}
+
+// ベンチ表示
+function renderBench(){
+  const benchDiv = document.getElementById("bench");
+  benchDiv.innerHTML="";
+  player.bench.forEach((card,idx)=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`${card.name}<br>攻:${card.attack} HP:${card.hp}`;
+    div.onclick=()=>moveToField(idx);
+    benchDiv.appendChild(div);
+  });
+}
+
+// ベンチから場に出す
+function moveToField(idx){
+  if(player.field.length<3){
+    player.field.push(player.bench[idx]);
+    player.bench.splice(idx,1);
+    renderBench();
+    renderField();
+  }else{
+    alert("場に出せる偉人カードは最大3枚です");
+  }
+}
+
+// 場表示
+function renderField(){
+  const fieldDiv=document.getElementById("field");
+  fieldDiv.innerHTML="";
+  player.field.forEach(card=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`${card.name}<br>攻:${card.attack} HP:${card.hp}`;
+    div.onclick=()=>swapFieldCard(card);
+    fieldDiv.appendChild(div);
+  });
+}
+
+// 場のカード入れ替え（偉人パワー2消費）
+function swapFieldCard(card){
+  if(player.power<2){
+    alert("偉人パワーが足りません");
+    return;
+  }
+  if(player.bench.length===0){
+    alert("ベンチにカードがありません");
+    return;
+  }
+  // 最初のベンチカードと入れ替え
+  let benchCard = player.bench[0];
+  player.bench[0] = card;
+  let fieldIdx = player.field.indexOf(card);
+  player.field[fieldIdx] = benchCard;
+  player.power -= 2;
+  renderBench();
+  renderField();
+  document.getElementById("player-power").innerText=player.power;
+}
+
+// ターン終了
+document.getElementById("endTurn").onclick=()=>{
+  turn++;
+  player.power++;
+  drawCard();
+  document.getElementById("turn").innerText=turn;
+  document.getElementById("player-power").innerText=player.power;
+};
+
+// 初期手札ドロー
+for(let i=0;i<5;i++) drawCard();
+</script>
+
+</body>
+</html>
