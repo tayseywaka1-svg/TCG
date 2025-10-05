@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>歴史カードゲーム 完全版</title>
+<style>
+body { font-family: sans-serif; background:#f2f2f2; }
+h1,h2 { text-align:center; }
+#info, #hand, #bench, #field { margin: 10px auto; padding: 10px; border: 2px solid #333; width:90%; background:#fff; border-radius:8px; }
+.card { border:1px solid #333; padding:5px; margin:5px; display:inline-block; cursor:pointer; background:#e8e8e8; border-radius:5px; width:120px; text-align:center; }
+button { margin:5px; padding:5px 10px; font-size:16px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<h1>歴史カードゲーム 完全版</h1>
+
+<div id="info">
+  <p>プレイヤーHP: <span id="player-hp">10000</span></p>
+  <p>敵HP: <span id="enemy-hp">10000</span></p>
+  <p>ターン: <span id="turn">1</span></p>
+  <p>偉人パワー: <span id="player-power">0</span></p>
+</div>
+
+<h2>手札</h2>
+<div id="hand"></div>
+
+<h2>ベンチ</h2>
+<div id="bench"></div>
+
+<h2>場</h2>
+<div id="field"></div>
+
+<button id="endTurn">ターン終了</button>
+
+<script>
+// ================== カードデータ ==================
+const cards = [
+  {name:"織田信長",attack:2000,hp:3000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"人間五十年",skill_effect:"相手のトラップカードの影響を受けずに攻撃できる",trait_name:"",trait_effect:""},
+  {name:"豊臣秀吉",attack:500,hp:3000,power_cost:1,type:"偉人",rarity:"UR",skill_name:"大返し",skill_effect:"相手に2回ダメージ。1回目で相手の偉人が消えたら直接ダメージ",trait_name:"千成瓢箪",trait_effect:"山札からカードを2枚引く"},
+  {name:"徳川家康",attack:500,hp:10000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"三つ葵",skill_effect:"受ける攻撃力-100",trait_name:"総大将",trait_effect:"ベンチの偉人数✖️100HP回復"},
+  {name:"明智光秀",attack:1000,hp:1500,power_cost:3,type:"偉人",rarity:"UR",skill_name:"桔梗紋",skill_effect:"明智姓のベンチ人数✖️1000ダメージ",trait_name:"本能寺の悲劇",trait_effect:"織田信長を墓地に送り明智光秀を引く"},
+  {name:"武田信玄",attack:1500,hp:5000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"風林火山",skill_effect:"受けるダメージ20減（重複可）",trait_name:"虎",trait_effect:"ベンチの偉人数✖️20受けるダメ減"},
+  {name:"上杉謙信",attack:1500,hp:1000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"毘沙門天",skill_effect:"与えるダメ20増（重複可）",trait_name:"龍",trait_effect:"ベンチの偉人数✖️20ダメ増"},
+  {name:"毛利元就",attack:500,hp:1000,power_cost:4,type:"偉人",rarity:"UR",skill_name:"謀",skill_effect:"ダメージを与える",trait_name:"厳島の攻防",trait_effect:"敵ターン開始時コイントス裏で攻撃不可"},
+  {name:"ナポレオン",attack:2000,hp:2000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"革命",skill_effect:"敵のレアリティ下から何番目か✖️100ダメ",trait_name:"大陸封鎖令",trait_effect:"敵偉人逃げれなくする"},
+  {name:"チンギス・ハン",attack:9999,hp:1,power_cost:5,type:"偉人",rarity:"UR",skill_name:"世界征服",skill_effect:"ダメージを与える",trait_name:"",trait_effect:""},
+  {name:"レオナルド・ダ・ヴィンチ",attack:200,hp:1000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"万能の天才",skill_effect:"ダメージ+山札から2枚引く",trait_name:"絵描き",trait_effect:"攻撃に必要な偉人パワー+2"},
+  {name:"アインシュタイン",attack:50,hp:1000,power_cost:1,type:"偉人",rarity:"UR",skill_name:"相対性理論",skill_effect:"ベンチの偉人に偉人パワー1付与",trait_name:"奇跡の年",trait_effect:"ターンに1回ベンチ偉人に偉人パワー1付与"},
+  {name:"エジソン",attack:250,hp:1000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"エネルギー革命",skill_effect:"偉人パワー✖️250ダメ",trait_name:"でしゃばり",trait_effect:"場の偉人とパワー消費せず入れ替え"},
+  {name:"ノーベル",attack:400,hp:500,power_cost:1,type:"偉人",rarity:"UR",skill_name:"ダイナマイト",skill_effect:"敵偉人がいないorパワー0なら3000ダメ",trait_name:"心臓病",trait_effect:"4ターン以上場にいたら墓地"},
+  {name:"キリスト",attack:200,hp:200,power_cost:10,type:"偉人",rarity:"UR",skill_name:"天界への導き",skill_effect:"使用時勝利",trait_name:"",trait_effect:""},
+  {name:"ムハンマド",attack:500,hp:15,power_cost:2,type:"偉人",rarity:"UR",skill_name:"中東の意地",skill_effect:"ダメージ",trait_name:"アッラーの教え",trait_effect:"ベンチでも敵偉人特性無視"}
+];
+
+// ================== ゲーム状態 ==================
+let player = {hp:10000,hand:[],bench:[],field:[],power:0,deck:[...cards]};
+let enemy = {hp:10000,hand:[],bench:[],field:[],power:0,deck:[...cards]};
+let turn = 1;
+
+// ================ ヘルパー関数 =================
+function shuffle(deck){for(let i=deck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}}
+function drawCard(playerObj){
+  if(playerObj.deck.length===0) return;
+  const idx=Math.floor(Math.random()*playerObj.deck.length);
+  const card=playerObj.deck.splice(idx,1)[0];
+  playerObj.hand.push({...card});
+  renderHand();
+}
+
+// ================ UI表示関数 ===============
+function renderHand(){
+  const handDiv=document.getElementById("hand");
+  handDiv.innerHTML="";
+  player.hand.forEach((card,index)=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`${card.name}<br>攻:${card.attack} HP:${card.hp}<br>コスト:${card.power_cost}`;
+    div.onclick=()=>playCard(index);
+    handDiv.appendChild(div);
+  });
+}
+
+function renderBench(){
+  const benchDiv=document.getElementById("bench");
+  benchDiv.innerHTML="";
+  player.bench.forEach((card,idx)=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`${card.name}<br>攻:${card.attack} HP:${card.hp}<br>パワー:${card.power}`;
+    div.onclick=()=>moveToField(idx);
+    benchDiv.appendChild(div);
+  });
+}
+
+function renderField(){
+  const fieldDiv=document.getElementById("field");
+  fieldDiv.innerHTML="";
+  player.field.forEach((card,idx)=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`${card.name}<br>攻:${card.attack} HP:${card.hp}<br>パワー:${card.power}<br>スキル:${card.skill_name}`;
+    div.onclick=()=>activateSkill(card,idx);
+    fieldDiv.appendChild(div);
+  });
+}
+
+// ================== ゲーム操作 ===================
+function playCard(index){
+  const card=player.hand[index];
+  if(card.type==="偉人"){
+    if(player.bench.length<3){
+      card.power=0;
+      card.turnsOnField=0;
+      player.bench.push(card);
+      player.hand.splice(index,1);
+      renderHand();
+      renderBench();
+    }else{alert("ベンチは3枚までです");}
+  }
+}
+
+function moveToField(idx){
+  if(player.field.length<3){
+    let card=player.bench[idx];
+    card.turnsOnField=0;
+    player.field.push(card);
+    player.bench.splice(idx,1);
+    renderBench();
+    renderField();
+  }else{alert("場は3枚まで");}
+}
+
+// スキル発動
+function activateSkill(card,idx){
+  if(card.skill_name==="天界への導き"){ alert("キリストのスキルで勝利！"); resetGame(); return; }
+  
+  let dmg=card.attack + (card.power*50);
+  // 条件付きダメージ例（ノーベル）
+  if(card.name==="ノーベル" && (enemy.field.length===0 || !enemy.field[0].power)) dmg=3000;
+  
+  enemy.hp-=dmg; if(enemy.hp<0) enemy.hp=0;
+  alert(`${card.name}のスキル発動！${dmg}ダメージ`);
+  document.getElementById("enemy-hp").innerText=enemy.hp;
+  checkWinLose();
+}
+
+// ターン終了
+document.getElementById("endTurn").onclick=()=>{
+  turn++; player.power++;
+  
+  // ベンチ・場のカードターン数更新と特性発動
+  player.field.forEach(card=>{
+    card.turnsOnField++;
+    // 心臓病
+    if(card.trait_name==="心臓病" && card.turnsOnField>=4){
+      alert(`${card.name}の心臓病で墓地へ`);
+      player.field=player.field.filter(c=>c!==card);
+    }
+  });
+  
+  drawCard(player);
+  document.getElementById("turn").innerText=turn;
+  document.getElementById("player-power").innerText=player.power;
+  
+  // 簡易敵ターン
+  if(enemy.hp>0){
+    let dmg=enemy.deck[0].attack;
+    player.hp-=dmg; if(player.hp<0) player.hp=0;
+    document.getElementById("player-hp").innerText=player.hp;
+    alert(`敵が攻撃！${dmg}ダメージ`);
+    checkWinLose();
+  }
+}
+
+// 勝敗判定
+function checkWinLose(){
+  if(player.hp<=0){ alert("あなたの敗北"); resetGame();}
+  if(enemy.hp<=0){ alert("あなたの勝利"); resetGame();}
+}
+
+// リセット
+function resetGame(){ location.reload(); }
+
+// 初期手札
+for(let i=0;i<5;i++) drawCard(player);
+</script>
+
+</body>
+</html>
