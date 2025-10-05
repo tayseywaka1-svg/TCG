@@ -1,82 +1,174 @@
+:root {
+  --bg: #0f172a;
+  --card: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #ef4444;
+}
+
+html,
 body {
-  font-family: system-ui, Arial;
-  background: #f6f7fb;
-  margin: 12px;
-  color: #111;
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", Segoe UI, Roboto, Arial;
+  background: linear-gradient(180deg, #07102a 0%, #0b1227 100%);
+  color: #e6eef8;
 }
-h1 { margin: 0 0 12px; }
-.row { display: flex; gap: 12px; align-items: flex-start; }
+
+.wrap {
+  max-width: 1100px;
+  margin: 18px auto;
+  padding: 18px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+#topbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
 .panel {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 12px;
   border-radius: 8px;
-  padding: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.panel.small { width: 260px; }
-.card {
-  display: inline-block;
-  background: #fff;
-  border: 1px solid #bbb;
-  border-radius: 6px;
-  padding: 6px;
-  margin: 6px;
-  width: 120px;
-  text-align: center;
-  font-size: 13px;
-  cursor: pointer;
+
+#boards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
 }
-.card.small { width: 90px; padding: 4px; font-size: 12px; }
-.btn {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid #333;
-  cursor: pointer;
-  margin: 4px;
+
+.side {
+  min-height: 220px;
 }
-.btn.primary { background: #111; color: #fff; border-color: #111; }
-.muted { color: #666; font-size: 13px; }
-.fieldCardBox {
-  background: #fff8dc;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #d7c59a;
-}
-.hand { min-height: 80px; }
-.zone {
-  min-height: 80px;
-  padding: 8px;
-  border: 1px dashed #ddd;
-  border-radius: 6px;
-}
-input[type=text] {
-  padding: 6px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  width: 220px;
-}
-.deckRow {
+
+.row {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin: 6px 0;
 }
-#modal {
-  position: fixed;
-  inset: 0;
-  display: none;
+
+.card {
+  width: 150px;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  color: #0b1227;
+  border-radius: 6px;
+  padding: 8px;
+  border: 2px solid #0f172a;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.6);
+  font-size: 12px;
+}
+
+.card .name {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+#hand,
+#bench,
+#field,
+#enemy-field {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button {
+  background: #0ea5e9;
+  border: none;
+  color: #042339;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.small {
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.hpbar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.hpfill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+}
+
+.log {
+  height: 180px;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
   align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.5);
+  margin-top: 8px;
 }
-#modal .box {
-  background: #fff;
-  padding: 18px;
-  border-radius: 8px;
-  min-width: 300px;
-  text-align: center;
+
+.card.clickable {
+  cursor: pointer;
 }
-.new { color: #c00; font-weight: 700; }
-.statusSmall { font-size: 13px; color: #444; }
+
+.assigned {
+  font-weight: 700;
+  color: #0b1227;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 6px;
+  display: inline-block;
+}
+
+.rarity {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  display: inline-block;
+}
+
+footer {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .card {
+    width: 130px;
+  }
+}
