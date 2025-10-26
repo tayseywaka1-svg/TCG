@@ -1,427 +1,1207 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<title>歴史カードゲーム — 完全試作（オフライン）</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Monster Arena — フル版（デッキ編集・CPU対戦）</title>
 <style>
-  :root{--bg:#0f172a;--card:#f8fafc;--muted:#94a3b8;--accent:#ef4444}
-  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#07102a 0%,#0b1227 100%);color:#e6eef8}
-  .wrap{max-width:1100px;margin:18px auto;padding:18px}
-  header{display:flex;align-items:center;gap:12px}
-  h1{margin:0;font-size:20px}
-  #topbar{display:flex;gap:12px;align-items:center;margin-top:8px}
-  .panel{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);padding:12px;border-radius:8px}
-  #boards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-  .side{min-height:220px}
-  .row{display:flex;gap:8px;align-items:center}
-  .card{width:150px;background:linear-gradient(180deg,#ffffff 0%,#f1f5f9 100%);color:#0b1227;border-radius:6px;padding:8px;border:2px solid #0f172a;box-shadow:0 6px 18px rgba(2,6,23,0.6);font-size:12px}
-  .card .name{font-weight:700;margin-bottom:6px}
-  .muted{color:var(--muted)}
-  #hand, #bench, #field, #enemy-field{display:flex;gap:8px;flex-wrap:wrap}
-  button{background:#0ea5e9;border:none;color:#042339;padding:8px 10px;border-radius:6px;cursor:pointer}
-  button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.08);color:#fff}
-  .small{font-size:12px;padding:6px 8px}
-  .hpbar{height:8px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden}
-  .hpfill{height:100%;background:linear-gradient(90deg,#10b981,#06b6d4);}
-  .log{height:180px;overflow:auto;background:rgba(0,0,0,0.25);padding:8px;border-radius:6px;font-size:13px}
-  .controls{display:flex;gap:8px;align-items:center;margin-top:8px}
-  .card.clickable{cursor:pointer}
-  .assigned{font-weight:700;color:#0b1227;background:#fef3c7;padding:2px 6px;border-radius:4px;margin-top:6px;display:inline-block}
-  .rarity{font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.06);display:inline-block}
-  footer{margin-top:12px;color:var(--muted);font-size:13px}
-  @media(max-width:900px){.card{width:130px}}
+:root{
+  --bg:#071025; --panel:#0f1724; --muted:#94a3b8; --card:#f8fafc; --accent:#ef4444;
+  --slot:#0b1a2b;
+}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}
+body{margin:0;background:linear-gradient(180deg,#03101a,#071025);color:#e6eef8}
+header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:12px}
+h1{margin:0;font-size:18px}
+.container{padding:12px;display:grid;grid-template-columns:1fr;gap:12px;max-width:1200px;margin:0 auto}
+.panel{background:var(--panel);padding:12px;border-radius:10px;box-shadow:0 8px 22px rgba(0,0,0,0.6)}
+.row{display:flex;gap:12px;align-items:center}
+.btn{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;color:#e6eef8;cursor:pointer}
+.small{font-size:13px;padding:6px 8px}
+.menu{display:flex;gap:8px}
+.grid{display:grid;grid-template-columns:1fr 360px;gap:12px}
+.leftCol{min-height:400px}
+.cardCompact{background:var(--card);color:#06101a;padding:8px;border-radius:8px;margin:6px 0;border:1px solid rgba(0,0,0,0.06)}
+.cardList{max-height:420px;overflow:auto;padding-right:6px}
+.deckView{max-height:420px;overflow:auto;padding-right:6px}
+.smallMuted{color:var(--muted);font-size:13px}
+.zone{background:linear-gradient(180deg,#071829,#071829);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+.rowWrap{display:flex;flex-wrap:wrap;gap:8px}
+.hand{display:flex;gap:8px;flex-wrap:wrap}
+.cardUI{background:var(--card);color:#06101a;padding:8px;border-radius:8px;width:120px;box-shadow:0 6px 14px rgba(0,0,0,0.5);border:1px solid rgba(0,0,0,0.06)}
+.battleRow{display:flex;gap:10px;justify-content:center}
+.battleSlot{width:150px;height:110px;border-radius:8px;background:linear-gradient(180deg,var(--slot),#071225);display:flex;align-items:center;justify-content:center;position:relative;border:1px dashed rgba(255,255,255,0.03)}
+.slotCard{background:#fff;color:#000;padding:6px;border-radius:6px;width:120px}
+.log{height:300px;overflow:auto;background:linear-gradient(180deg,#04121a,#021018);padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+.controls{display:flex;gap:8px;align-items:center}
+.footerNote{font-size:13px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);margin-top:6px}
+.fieldCard{background:#fff;padding:6px;border-radius:6px;color:#000}
+.badge{background:#0ea5a4;padding:4px 6px;border-radius:6px;font-weight:700;color:#022}
+.targetable{outline:3px solid rgba(255,200,0,0.2)}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>歴史カードゲーム — 完全試作</h1>
-    <div class="muted">（オフライン試作・デモ）</div>
-  </header>
+<header>
+  <h1>Monster Arena — フル版</h1>
+  <div style="margin-left:auto" class="smallMuted">ユニオンアリーナ風ルール（名称差替版）</div>
+</header>
 
-  <div id="topbar" class="panel">
-    <div>プレイヤーHP: <strong id="player-hp">10000</strong></div>
-    <div>敵HP: <strong id="enemy-hp">10000</strong></div>
-    <div>ターン: <strong id="turn">1</strong></div>
-    <div>偉人パワー: <strong id="player-power">0</strong></div>
-    <div>山札: <strong id="deck-count">0</strong></div>
-    <div>墓地: <strong id="grave-count">0</strong></div>
+<div class="container">
+  <!-- Main Menu / Views -->
+  <div id="viewMenu" class="panel">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:800">メインメニュー</div>
+        <div class="smallMuted">デッキ編集 → 作成・保存 → CPU対戦ができます</div>
+      </div>
+      <div class="menu">
+        <button class="btn small" onclick="showView('deckEditor')">デッキ編集</button>
+        <button class="btn small" onclick="showView('cpuMatch')">CPU対戦</button>
+        <button class="btn small" onclick="showView('ruleView')">ルール説明</button>
+      </div>
+    </div>
+    <div style="margin-top:12px" class="row">
+      <div style="flex:1">
+        <div class="smallMuted">保存デッキ</div>
+        <div id="savedDecksList" class="rowWrap" style="margin-top:8px"></div>
+      </div>
+      <div style="width:260px">
+        <div class="smallMuted">クイック操作</div>
+        <div style="margin-top:8px" class="row">
+          <button class="btn small" onclick="quickSaveDefault()">現在のデッキをクイック保存</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="boards">
-    <div class="panel side">
-      <div class="row"><strong>あなたの領域</strong></div>
-      <div style="margin-top:8px">
-        <div class="muted">手札（クリックでベンチへ）</div>
-        <div id="hand"></div>
+  <!-- Deck Editor -->
+  <div id="viewDeckEditor" class="panel" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:800">デッキ編集</div>
+        <div class="smallMuted">カードを選んでデッキ（50枚）を作成、保存できます。 同一カードは最大4枚。</div>
       </div>
-
-      <div style="margin-top:10px">
-        <div class="muted">ベンチ（最大3、クリックで場へ）</div>
-        <div id="bench"></div>
-      </div>
-
-      <div style="margin-top:10px">
-        <div class="muted">場（偉人カード、クリックで攻撃/割り振り/入れ替え）</div>
-        <div id="field"></div>
-      </div>
-
       <div class="controls">
-        <button id="endTurn">ターン終了</button>
-        <button id="coinToss" class="secondary small">コイントス（先攻/後攻）</button>
-        <button id="reset" class="secondary small">初期化</button>
+        <input id="deckNameInput" placeholder="デッキ名を入力" class="small" />
+        <button class="btn small" onclick="saveDeck()">保存</button>
+        <button class="btn small" onclick="clearDeck()">クリア</button>
+        <button class="btn small" onclick="showView('viewMenu')">戻る</button>
       </div>
     </div>
 
-    <div class="panel side">
-      <div class="row"><strong>敵の領域（簡易AI）</strong></div>
-      <div style="margin-top:8px">
-        <div class="muted">場</div>
-        <div id="enemy-field"></div>
+    <div class="grid" style="margin-top:12px">
+      <div class="leftCol">
+        <div class="zone panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-weight:700">全カード（クリックで追加）</div>
+            <div class="smallMuted">合計カード種類: <span id="cardPoolCount"></span></div>
+          </div>
+          <div class="cardList" id="allCardsArea" style="margin-top:8px"></div>
+        </div>
       </div>
 
-      <div style="margin-top:12px">
-        <div class="muted">ログ</div>
-        <div class="log" id="log"></div>
+      <div>
+        <div class="zone panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-weight:700">現在のデッキ</div>
+            <div class="smallMuted">枚数: <span id="currentDeckCount">0</span>/50</div>
+          </div>
+          <div class="deckView" id="deckListArea" style="margin-top:8px"></div>
+          <div style="margin-top:8px" class="note">カードの右の「−」でデッキから削除</div>
+        </div>
+        <div style="margin-top:8px" class="smallMuted">保存済デッキ管理</div>
+        <div id="savedDecks" style="margin-top:6px" class="rowWrap"></div>
       </div>
     </div>
   </div>
 
-  <footer class="muted">ルール要点: デッキ50枚・手札5（偉人1枚は必ず含む）・ベンチ3・場3・偉人パワーはターン開始時+1・偉人パワー2で入れ替え・技は偉人パワーを指定カードに割当てて発動。</footer>
+  <!-- CPU Match -->
+  <div id="viewCpuMatch" class="panel" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:800">CPU対戦</div>
+        <div class="smallMuted">自分の保存デッキを選択して対戦開始してください</div>
+      </div>
+      <div class="controls">
+        <select id="deckSelect" class="small"></select>
+        <label class="smallMuted" style="margin-left:8px">先攻</label>
+        <select id="whoGoesFirst" class="small">
+          <option value="player">あなた</option>
+          <option value="cpu">CPU</option>
+        </select>
+        <button class="btn small" onclick="startMatch()">対戦開始</button>
+        <button class="btn small" onclick="showView('viewMenu')">戻る</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:12px">
+      <div style="flex:1">
+        <div class="zone panel">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-weight:700">フィールド</div>
+            <div class="smallMuted">ターン: <span id="uiTurn">0</span></div>
+          </div>
+
+          <!-- CPU area -->
+          <div style="margin-top:10px">
+            <div class="smallMuted">CPU — シールド: <span id="cpuShieldUI">7</span> | 山札: <span id="cpuDeckUI">50</span> | 墓地: <span id="cpuGraveUI">0</span> | マナ: <span id="cpuManaUI">0/0</span></div>
+            <div style="margin-top:8px" class="battleRow" id="cpuBattleRow"></div>
+            <div style="margin-top:6px" class="smallMuted">フィールド: <span id="cpuFieldUI">なし</span></div>
+          </div>
+
+          <hr style="margin:8px 0;border-color:rgba(255,255,255,0.03)"/>
+
+          <!-- Player area -->
+          <div>
+            <div class="smallMuted">あなた — シールド: <span id="playerShieldUI">7</span> | 山札: <span id="playerDeckUI">50</span> | 墓地: <span id="playerGraveUI">0</span> | マナ: <span id="playerManaUI">0/0</span></div>
+            <div style="margin-top:8px" class="battleRow" id="playerBattleRow"></div>
+            <div style="margin-top:6px" class="smallMuted">フィールド: <span id="playerFieldUI">なし</span></div>
+          </div>
+
+          <!-- hand -->
+          <div style="margin-top:10px">
+            <div class="smallMuted">手札（クリックで使用）</div>
+            <div class="hand" id="playerHandUI" style="margin-top:8px"></div>
+          </div>
+
+          <div style="margin-top:8px" class="controls">
+            <button class="btn small" id="endTurnBtnMatch" onclick="endTurn()" disabled>ターン終了</button>
+            <button class="btn small" onclick="forfeitMatch()">降参</button>
+            <button class="btn small" onclick="shufflePlayerDeck()">デッキをシャッフル</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:360px">
+        <div class="zone panel">
+          <div style="font-weight:700">行動ログ</div>
+          <div class="log" id="matchLog"></div>
+          <div style="margin-top:8px" class="smallMuted">プレイ履歴（リスト形式）</div>
+          <div id="historyList" style="max-height:150px;overflow:auto;margin-top:6px"></div>
+        </div>
+
+        <div style="margin-top:12px" class="zone panel">
+          <div style="font-weight:700">対戦情報</div>
+          <div class="smallMuted" style="margin-top:8px">現在のモード: <span id="infoMode">待機</span></div>
+          <div class="smallMuted">CPU強さ: 中程度</div>
+          <div style="margin-top:8px" class="footerNote">注：カード効果は主要部分を実装。複雑なルールは省略または簡略化しています。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules View -->
+  <div id="viewRule" class="panel" style="display:none">
+    <div style="font-weight:800">ルール説明（簡略）</div>
+    <div class="note">
+      - デッキ50枚、同一カード4枚まで。<br/>
+      - シールド（ライフ）は7枚。シールドが0かつ相手バトルゾーンが空の時にダイレクトアタックで即時勝利。<br/>
+      - マナはターン開始時に全回復。先攻ターン1=1マナ、後攻ターン1=2マナ、ターン2=2、ターン3以降=3（最大3）。<br/>
+      - カードは「モンスター」「魔法」「フィールド」。モンスターはバトルゾーンに出し、攻撃可能。魔法は使い切り。フィールドは場に1枚だけ置ける。<br/>
+      - 多くのカード効果は簡略化して実装されています。詳細な挙動変更は調整可能です。
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn small" onclick="showView('viewMenu')">戻る</button>
+    </div>
+  </div>
 </div>
 
 <script>
-// ----- カードデータ（ユーザーが定義した偉人カードを反映） -----
-const baseCards = [
-  {name:"織田信長",attack:2000,hp:3000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"人間五十年",skill_effect:"相手のトラップカードの影響を受けずに攻撃できる",trait_name:"",trait_effect:""},
-  {name:"豊臣秀吉",attack:500,hp:3000,power_cost:1,type:"偉人",rarity:"UR",skill_name:"大返し",skill_effect:"相手に2回ダメージを与える。もし、1回目の攻撃で相手の偉人カードがなくなった場合、相手はベンチから偉人カードを出すことができず、相手に直接ダメージを与える",trait_name:"千成瓢箪（せんなりびょうたん）",trait_effect:"自分のターンに1回使える。山札からカードを上から2枚引き、手札に加える"},
-  {name:"徳川家康",attack:500,hp:10000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"三つ葵",skill_effect:"この技を受けた相手の攻撃力を-100する",trait_name:"総大将",trait_effect:"自分のベンチにいる偉人カードの数✖️100だけ、毎ターンHPを回復する"},
-  {name:"明智光秀",attack:1000,hp:1500,power_cost:3,type:"偉人",rarity:"UR",skill_name:"桔梗紋",skill_effect:"自分のベンチにいる明智姓の人の数✖️1000のダメージ",trait_name:"本能寺の悲劇",trait_effect:"自分のターンに1回使える。自分の手札から織田信長を1枚墓地に送り、山札から明智光秀を1枚引く。隠し効果：相手の織田信長に与えるダメージをプラス10000する"},
-  {name:"武田信玄",attack:1500,hp:5000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"風林火山",skill_effect:"この技を使うたびに、自分の受けるダメージが20ずつ減る。この効果は重複する",trait_name:"虎",trait_effect:"自分のベンチにいる偉人カードの数✖️20ずつ受けるダメージが減る"},
-  {name:"上杉謙信",attack:1500,hp:1000,power_cost:3,type:"偉人",rarity:"UR",skill_name:"毘沙門天",skill_effect:"この技を使うたびに、自分の与えるダメージが20ずつ増える",trait_name:"龍",trait_effect:"自分のベンチにいる偉人カードの数✖️20ずつ与えるダメージが増える"},
-  {name:"毛利元就",attack:500,hp:1000,power_cost:4,type:"偉人",rarity:"UR",skill_name:"謀",skill_effect:"ダメージを与える",trait_name:"厳島の攻防",trait_effect:"相手のターン開始時に発動する。コイントスをし、裏が出ると相手は攻撃できなくなる"},
-  {name:"ナポレオン",attack:2000,hp:2000,power_cost:2,type:"偉人",rarity:"UR",skill_name:"革命",skill_effect:"相手のレアリティが下から何番目か✖️100ダメージ",trait_name:"大陸封鎖令",trait_effect:"相手の偉人を逃げれなくする"}
+/* ======= カードプール（あなたが提供したカード群を実装） ======= */
+const CARD_POOL = [
+  // Monsters
+  {id:'M_SLIME', name:'スライム', type:'monster', cost:1, power:1, text:'登場時：デッキから「スライム」名のカード1枚をサーチして手札に加える'},
+  {id:'M_ONIJIN', name:'鬼人', type:'monster', cost:4, power:4, text:'エンドフェイズ：相手モンスターの中から自分の攻撃力以下のモンスターを1体選び墓地へ送る'},
+  {id:'M_NECRO', name:'ネクロマンサー', type:'monster', cost:5, power:3, text:'エンドフェイズ：自分の墓地からランダムに1体を蘇生する'},
+  {id:'M_JUJUTSU', name:'呪術師', type:'monster', cost:3, power:2, text:'場にいる間、相手モンスターの効果を無効化する'},
+  {id:'M_GOLEM', name:'ゴーレム', type:'monster', cost:3, power:4, text:'なし'},
+  {id:'M_SP_GOLEM', name:'スピードゴーレム', type:'monster', cost:5, power:3, text:'このカードは1ターンに2回攻撃できる'},
+  {id:'M_ATK_GOLEM', name:'アタックゴーレム', type:'monster', cost:5, power:5, text:'なし'},
+  {id:'M_ULT_GOLEM', name:'アルティメットゴーレム', type:'monster', cost:20, power:6, text:'ゴーレム、スピードゴーレム、アタックゴーレムを生贄に捧げて特殊召喚できる。1ターンに2回攻撃'},
+  {id:'M_ANT', name:'アント', type:'monster', cost:1, power:1, text:'登場時：デッキに「アントα」が存在する場合、その1枚を手札に加える'},
+  {id:'M_ANT_A', name:'アントα', type:'monster', cost:1, power:1, text:'登場時：デッキから「アント」名のカード1枚を手札に加える'},
+  {id:'M_IRON_ANT', name:'アイアンアント', type:'monster', cost:2, power:3, text:'なし'},
+  {id:'M_GOLD_ANT', name:'ゴールドアント', type:'monster', cost:3, power:3, text:'効果発動：デッキから「アント」または「アントα」を1体選び場に召喚（召喚酔い無し）。カードごとに1回'},
+  {id:'M_ANT_KING', name:'アントキング', type:'monster', cost:4, power:4, text:'効果発動：墓地から「アント」名のモンスターを最大2体選び召喚（召喚酔い無し）。カードごとに1回'},
+
+  // Spells
+  {id:'S_DARK_SAC', name:'ダークサクリファイス', type:'spell', cost:3, text:'自分のモンスター1体を墓地に送り、その攻撃力分相手モンスター1体の攻撃力を減少'},
+  {id:'S_LIGHTNING', name:'雷撃', type:'spell', cost:4, text:'相手のモンスター1体を破壊'},
+  {id:'S_RELIC', name:'亡者の遺品', type:'spell', cost:3, text:'墓地からカード1枚を手札に戻す'},
+  {id:'S_ANT_EGG', name:'アントの卵', type:'spell', cost:2, text:'山札から「アント」名のカードを最大2枚手札に加える'},
+  {id:'S_ANT_RETAL', name:'アントの逆襲', type:'spell', cost:2, text:'ターン中、自分の「アント」名のモンスター全ての攻撃力+1（終了時に戻る）'},
+  {id:'S_ANT_GROW', name:'アントの育成', type:'spell', cost:2, text:'このターン中、自分の「アント」名のモンスターの召喚コスト-1'},
+  {id:'S_SNIP', name:'狙い撃ち', type:'spell', cost:4, text:'相手の攻撃力4以下のモンスターを1体墓地へ'},
+  {id:'S_RESEARCH', name:'博士の研究', type:'spell', cost:1, text:'2枚ドロー（このカードは1ターンに1度のみ使用可）'},
+  {id:'S_MAGIC_SEARCH', name:'マジックサーチ', type:'spell', cost:1, text:'山札から魔法カード1枚を手札に加える（非公開）'},
+  {id:'S_MONSTER_SEARCH', name:'モンスターサーチ', type:'spell', cost:1, text:'山札からモンスターカード1枚を手札に加える（非公開）'},
+  {id:'S_ANT_AWAKEN', name:'アントの覚醒', type:'spell', cost:1, text:'自分の場にいる全ての「アント」名のモンスターの召喚酔いを解除'},
+
+  // Field
+  {id:'F_HAPPY_M', name:'ハッピーマウンテン', type:'field', cost:2, text:'エンドフェイズ：両者1枚ドロー。場に1枚のみ'},
+  {id:'F_LOST_FOREST', name:'亡者の森', type:'field', cost:3, text:'エンドフェイズ：両者の墓地からランダムで1枚を手札に戻す。場に1枚のみ'},
+  {id:'F_ANT_NEST', name:'アントの巣', type:'field', cost:2, text:'「アント」名のモンスターの攻撃力+1'},
+  {id:'F_ANT_BREED', name:'アントの産卵場', type:'field', cost:3, text:'「アント」名のモンスターのコスト-1（両者）'}
 ];
 
-// helper: clone card instance with runtime fields
-function createInstance(card){
-  return Object.assign({}, card, {cur_hp: card.hp, assignedPower:0, usedTraitThisTurn:false, usedSkillThisTurn:false});
+/* ================= 状態管理（マッチ） ================= */
+let storageKey = 'monsterArena_decks_v1';
+let savedDecks = loadSavedDecks(); // {name: string, cards: [ids]}
+let currentBuild = []; // array of card ids during editing
+
+// Match state
+let match = null; // will hold all runtime state when match starts
+
+/* ================= ユーティリティ ================= */
+function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function findCardById(id){ return clone(CARD_POOL.find(c=>c.id===id)); }
+function countInDecklist(list, id){ return list.filter(x=>x===id).length; }
+
+/* ================== UI: view switching ================== */
+function showView(view){
+  document.getElementById('viewMenu').style.display = (view==='viewMenu' || view===undefined)?'block':'none';
+  document.getElementById('viewDeckEditor').style.display = view==='deckEditor' ? 'block' : 'none';
+  document.getElementById('viewCpuMatch').style.display = view==='cpuMatch' ? 'block' : 'none';
+  document.getElementById('viewRule').style.display = view==='ruleView' ? 'block' : 'none';
+  // populate lists when showing specific views
+  if(view==='deckEditor') renderAllCards(), renderDeckList(), renderSavedDecksUI();
+  if(view==='viewMenu' || view===undefined) renderSavedDecksList();
+  if(view==='cpuMatch') populateDeckSelect();
 }
 
-// Build deck (50 cards) by repeating user cards (in real scenario user will supply full 50)
-function buildDeck(){
-  const deck = [];
-  for(let i=0;i<50;i++){
-    const source = baseCards[i % baseCards.length];
-    deck.push(createInstance(source));
+/* ================== LocalStorage: save/load decks ================== */
+function loadSavedDecks(){
+  try {
+    const raw = localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e){ return []; }
+}
+function saveSavedDecks(){
+  localStorage.setItem(storageKey, JSON.stringify(savedDecks));
+}
+function saveDeck(){
+  const name = document.getElementById('deckNameInput').value.trim();
+  if(!name){ alert('デッキ名を入力してください'); return; }
+  if(currentBuild.length !== 50){ alert('デッキは50枚にしてください（現在 '+currentBuild.length+' 枚）'); return; }
+  // check max 4 copies
+  for(const id of new Set(currentBuild)){
+    if(countInDecklist(currentBuild,id) > 4){ alert('カード '+ findCardById(id).name +' が4枚を超えています'); return; }
   }
-  // simple shuffle
-  for(let i=deck.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];
-  }
+  // save (overwrite if same name)
+  const existingIdx = savedDecks.findIndex(d=>d.name===name);
+  const deckObj = {name, cards: [...currentBuild]};
+  if(existingIdx!==-1) savedDecks[existingIdx] = deckObj;
+  else savedDecks.push(deckObj);
+  saveSavedDecks();
+  renderSavedDecksUI();
+  renderSavedDecksList();
+  alert('保存しました: '+name);
+}
+function deleteSavedDeck(name){
+  if(!confirm('デッキ「'+name+'」を削除しますか？')) return;
+  savedDecks = savedDecks.filter(d=>d.name!==name);
+  saveSavedDecks();
+  renderSavedDecksUI();
+  renderSavedDecksList();
+}
+function loadDeckToEditor(name){
+  const deck = savedDecks.find(d=>d.name===name);
+  if(!deck) return;
+  currentBuild = [...deck.cards];
+  document.getElementById('deckNameInput').value = deck.name;
+  renderDeckList();
+}
+
+/* quick save currentBuild into a generated quick name */
+function quickSaveDefault(){
+  const name = 'QuickDeck_'+(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'_');
+  if(currentBuild.length !== 50){ alert('現在のデッキ枚数が50ではありません。保存できません。'); return; }
+  savedDecks.push({name, cards:[...currentBuild]});
+  saveSavedDecks();
+  renderSavedDecksUI();
+  renderSavedDecksList();
+  alert('クイック保存しました：'+name);
+}
+
+/* ================== Render functions for editor/menu ================== */
+function renderAllCards(){
+  const area = document.getElementById('allCardsArea');
+  area.innerHTML = '';
+  document.getElementById('cardPoolCount').textContent = CARD_POOL.length;
+  CARD_POOL.forEach(c=>{
+    const el = document.createElement('div');
+    el.className = 'cardCompact';
+    el.innerHTML = `<div style="display:flex;justify-content:space-between"><div style="font-weight:700">${c.name}</div><div class="smallMuted">${c.type.toUpperCase()}</div></div>
+      <div class="smallMuted">cost:${c.cost}${c.power? ' / atk:'+c.power : ''}</div>
+      <div style="margin-top:6px;font-size:13px;color:#222">${c.text ?? ''}</div>
+      <div style="margin-top:6px"><button class="btn small" onclick="addCardToDeck('${c.id}')">追加</button></div>`;
+    area.appendChild(el);
+  });
+}
+function renderDeckList(){
+  const area = document.getElementById('deckListArea');
+  area.innerHTML = '';
+  document.getElementById('currentDeckCount').textContent = currentBuild.length;
+  // list by groups
+  const grouped = {};
+  currentBuild.forEach(id=> grouped[id] = (grouped[id]||0)+1);
+  Object.keys(grouped).forEach(id=>{
+    const c = findCardById(id);
+    const el = document.createElement('div');
+    el.className = 'cardCompact';
+    el.innerHTML = `<div style="display:flex;justify-content:space-between"><div style="font-weight:700">${c.name}</div><div class="smallMuted">${grouped[id]} 枚</div></div>
+      <div class="smallMuted">${c.type} cost:${c.cost}${c.power? ' / atk:'+c.power : ''}</div>
+      <div style="margin-top:6px"><button class="btn small" onclick="removeOneFromDeck('${id}')">−</button></div>`;
+    area.appendChild(el);
+  });
+}
+function renderSavedDecksUI(){
+  const area = document.getElementById('savedDecks');
+  area.innerHTML = '';
+  savedDecks.forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'cardCompact';
+    el.style.display='flex'; el.style.justifyContent='space-between'; el.style.alignItems='center';
+    el.innerHTML = `<div style="flex:1"><div style="font-weight:700">${d.name}</div><div class="smallMuted">${d.cards.length} 枚</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn small" onclick="loadDeckToEditor('${d.name}')">読み込み</button><button class="btn small" onclick="deleteSavedDeck('${d.name}')">削除</button></div>`;
+    area.appendChild(el);
+  });
+}
+function renderSavedDecksList(){
+  const area = document.getElementById('savedDecksList');
+  area.innerHTML = '';
+  savedDecks.forEach(d=>{
+    const btn = document.createElement('button');
+    btn.className = 'btn small';
+    btn.textContent = d.name;
+    btn.onclick = ()=>{ document.getElementById('deckSelect').value = d.name; showView('cpuMatch'); populateDeckSelect(); };
+    area.appendChild(btn);
+  });
+}
+
+/* ================= Deck editing helpers ================= */
+function addCardToDeck(id){
+  if(currentBuild.length >= 50){ alert('デッキは50枚までです'); return; }
+  if(countInDecklist(currentBuild,id) >= 4){ alert('同一カードは最大4枚までです'); return; }
+  currentBuild.push(id);
+  renderDeckList();
+}
+function removeOneFromDeck(id){
+  const i = currentBuild.findIndex(x=>x===id);
+  if(i>=0) currentBuild.splice(i,1);
+  renderDeckList();
+}
+function clearDeck(){ if(confirm('デッキをクリアしますか？')){ currentBuild=[]; document.getElementById('deckNameInput').value=''; renderDeckList(); } }
+
+/* ================= CPU Match: setup and runtime ================= */
+function populateDeckSelect(){
+  const select = document.getElementById('deckSelect');
+  select.innerHTML = '';
+  const opt = document.createElement('option'); opt.value='__none__'; opt.textContent='-- デッキを選択 --'; select.appendChild(opt);
+  savedDecks.forEach(d=>{
+    const o = document.createElement('option'); o.value = d.name; o.textContent = d.name; select.appendChild(o);
+  });
+}
+
+/* Build a 50-card deck array (ids) for player and CPU */
+function buildDeckFromSaved(name){
+  const obj = savedDecks.find(d=>d.name===name);
+  if(!obj) return null;
+  // return a shallow clone
+  return [...obj.cards];
+}
+function buildRandomCpuDeck(){
+  // Create a pool where each card id can be used up to 4 times
+  let pool = [];
+  CARD_POOL.forEach(c=>{
+    for(let i=0;i<4;i++) pool.push(c.id);
+  });
+  shuffle(pool);
+  // pick first 50
+  const deck = pool.slice(0,50);
   return deck;
 }
 
-// Game state
-let player = {hp:10000,deck:[],hand:[],bench:[],field:[],power:0,grave:[]};
-let enemy = {hp:10000,deck:[],bench:[],field:[],grave:[]};
-let turn=1;let playerTurn=true;let coinTossResult=null;let benchBlockForTurn=false; // block bench summon after Toyotomi
-
-// UI refs
-const handDiv=document.getElementById('hand');
-const benchDiv=document.getElementById('bench');
-const fieldDiv=document.getElementById('field');
-const enemyFieldDiv=document.getElementById('enemy-field');
-const logDiv=document.getElementById('log');
-
-function log(s){
-  const p=document.createElement('div');p.textContent=s;logDiv.prepend(p);
+/* start match */
+function startMatch(){
+  const sel = document.getElementById('deckSelect').value;
+  if(!sel || sel === '__none__'){ alert('対戦に使う保存デッキを選んでください'); return; }
+  const playerDeck = buildDeckFromSaved(sel);
+  if(!playerDeck || playerDeck.length!==50){ alert('選択デッキが不正です（50枚であること）'); return; }
+  const cpuDeck = buildRandomCpuDeck();
+  // initial match state
+  match = {
+    turn: 0,
+    phase: 'start',
+    player: {
+      deck: shuffle(playerDeck.slice()),
+      hand: [],
+      grave: [],
+      battle: [null,null,null],
+      field: null,
+      shield: 7,
+      mana: {current:0,max:0},
+      researched: false,
+      antCostReduce:0,
+    },
+    cpu: {
+      deck: shuffle(cpuDeck.slice()),
+      hand: [],
+      grave: [],
+      battle: [null,null,null],
+      field: null,
+      shield: 7,
+      mana: {current:0,max:0},
+      researched:false,
+      antCostReduce:0,
+    },
+    active: document.getElementById('whoGoesFirst').value === 'player' ? 'player' : 'cpu',
+    log: [],
+    history: []
+  };
+  // initial draws 5 each
+  for(let i=0;i<5;i++){ drawFor('player'); drawFor('cpu'); }
+  match.turn = 1;
+  updateManaForMatch();
+  updateAllUI();
+  document.getElementById('endTurnBtnMatch').disabled = false;
+  logMatch('対戦開始: あなたのデッキ「'+sel+'」 vs CPU（ランダム）');
+  document.getElementById('infoMode').textContent = '対戦中';
+  // if CPU starts, run CPU turn
+  if(match.active === 'cpu'){ setTimeout(() => cpuTakeTurn(), 400); }
 }
 
-function updateInfo(){
-  document.getElementById('player-hp').innerText=player.hp;
-  document.getElementById('enemy-hp').innerText=enemy.hp;
-  document.getElementById('turn').innerText=turn;
-  document.getElementById('player-power').innerText=player.power;
-  document.getElementById('deck-count').innerText=player.deck.length;
-  document.getElementById('grave-count').innerText=player.grave.length;
+/* Draw */
+function drawFor(side){
+  if(!match) return;
+  const s = match[side];
+  if(s.deck.length === 0){
+    // deck out => lose
+    if(side === 'player'){ alert('あなたの山札が無くなりました。敗北です。'); resetToMenu(); return; }
+    else { alert('CPUの山札が無くなりました。あなたの勝利です！'); resetToMenu(); return; }
+  }
+  const id = s.deck.shift();
+  const card = findCardById(id);
+  s.hand.push(card);
+  logMatch((side==='player'?'あなた':'CPU')+'は1枚ドロー：'+card.name);
+  updateAllUI();
 }
 
-// Rendering functions
-function renderHand(){
-  handDiv.innerHTML='';
-  player.hand.forEach((c,i)=>{
-    const d=document.createElement('div');d.className='card clickable';
-    d.innerHTML=`<div class="name">${c.name} <span class="rarity">${c.rarity}</span></div>
-                 <div>攻:${c.attack} HP:${c.cur_hp}</div>
-                 <div class="muted">コスト:${c.power_cost}</div>`;
-    d.onclick=()=>playToBench(i);
-    handDiv.appendChild(d);
+/* End turn handler */
+function endTurn(){
+  if(!match) return;
+  // if active is player, end-> cpu; if cpu, end-> player
+  if(match.active === 'player'){
+    resolveEndPhase('player');
+    match.active = 'cpu';
+    updateAllUI();
+    setTimeout(()=> cpuTakeTurn(), 300);
+  } else {
+    // shouldn't be clickable
+  }
+}
+
+/* Forfeit */
+function forfeitMatch(){ if(!match) return; if(confirm('降参しますか？')){ alert('あなたの敗北です'); resetToMenu(); } }
+
+/* Shuffle Player Deck */
+function shufflePlayerDeck(){ if(!match) return; match.player.deck = shuffle(match.player.deck); logMatch('あなたはデッキをシャッフルした'); updateAllUI(); }
+
+/* Reset to main menu after match end */
+function resetToMenu(){
+  match = null;
+  document.getElementById('endTurnBtnMatch').disabled = true;
+  document.getElementById('infoMode').textContent = '待機';
+  showView('viewMenu');
+  renderSavedDecksList();
+}
+
+/* Update Mana according to turn rules */
+function updateManaForMatch(){
+  if(!match) return;
+  const t = match.turn;
+  // t counts overall increments; we will map to player-first-turn logic: if player started as first active, use mapping
+  // We will consider "round" as half-turn increments. Simpler: maintain conceptual "round number" where player first turn is round1.
+  // For simplicity, when match.turn ===1, we set per agreement: playerMax=1, cpuMax=2 if player started; if cpu started invert
+  let pMax=1, cMax=2;
+  // determine who is initial starter (when match.turn started)
+  const starter = document.getElementById('whoGoesFirst').value;
+  // compute 'turnNumber' of each player's personal turns by counting how many times they gained mana
+  // simpler rule mapping (from earlier decisions):
+  // If it's the first global turn:
+  if(match.turn === 1){
+    if(starter === 'player'){ pMax=1; cMax=2; }
+    else { pMax=2; cMax=1; }
+  } else if(match.turn === 2){
+    // second increment: both 2
+    pMax=2; cMax=2;
+  } else {
+    pMax=3; cMax=3;
+  }
+  match.player.mana.max = pMax; match.player.mana.current = pMax;
+  match.cpu.mana.max = cMax; match.cpu.mana.current = cMax;
+  // reset per-turn flags
+  match.player.researched=false; match.cpu.researched=false;
+  match.player.antCostReduce = match.player.antCostReduce || 0;
+  match.cpu.antCostReduce = match.cpu.antCostReduce || 0;
+}
+
+/* Log/History */
+function logMatch(msg){
+  if(!match){ console.log(msg); return; }
+  match.log.unshift(msg);
+  if(match.log.length > 500) match.log.pop();
+  // also append to history list
+  match.history.unshift({time:(new Date()).toLocaleTimeString(), text:msg});
+  if(match.history.length > 500) match.history.pop();
+  updateAllUI();
+}
+function renderHistory(){ const el = document.getElementById('historyList'); el.innerHTML=''; if(!match) return; match.history.slice(0,200).forEach(h=>{ const div = document.createElement('div'); div.className='smallMuted'; div.style.padding='4px 0'; div.textContent = `[${h.time}] ${h.text}`; el.appendChild(div); }); }
+
+/* Update all UI */
+function updateAllUI(){
+  if(!match){
+    // update deck lists counters etc.
+    document.getElementById('playerDeckUI').textContent = '-';
+    document.getElementById('cpuDeckUI').textContent = '-';
+    return;
+  }
+  document.getElementById('uiTurn').textContent = match.turn;
+  // counts
+  document.getElementById('playerDeckUI').textContent = match.player.deck.length;
+  document.getElementById('cpuDeckUI').textContent = match.cpu.deck.length;
+  document.getElementById('playerShieldUI').textContent = match.player.shield;
+  document.getElementById('cpuShieldUI').textContent = match.cpu.shield;
+  document.getElementById('playerGraveUI').textContent = match.player.grave.length;
+  document.getElementById('cpuGraveUI').textContent = match.cpu.grave.length;
+  document.getElementById('playerManaUI').textContent = match.player.mana.current + '/' + match.player.mana.max;
+  document.getElementById('cpuManaUI').textContent = match.cpu.mana.current + '/' + match.cpu.mana.max;
+  // fields
+  document.getElementById('playerFieldUI').innerHTML = match.player.field ? `<span class="fieldCard">${match.player.field.name}</span>` : 'なし';
+  document.getElementById('cpuFieldUI').innerHTML = match.cpu.field ? `<span class="fieldCard">${match.cpu.field.name}</span>` : 'なし';
+  // battle rows
+  const pRow = document.getElementById('playerBattleRow'); pRow.innerHTML='';
+  match.player.battle.forEach((b,idx)=>{
+    const slot = document.createElement('div'); slot.className='battleSlot';
+    if(b){
+      const inner = document.createElement('div'); inner.className='slotCard';
+      inner.innerHTML = `<div style="font-weight:700">${b.name}</div><div class="smallMuted">atk:${b.power}</div>
+        <div style="margin-top:6px"><button class="btn small" onclick="onPlayerAttack(${idx})">攻撃</button>${b.canActivate? ' <button class="btn small" onclick="onPlayerActivate('+idx+')">効果発動</button>':''}</div>`;
+      slot.appendChild(inner);
+    } else slot.innerHTML = '<div class="smallMuted">空</div>';
+    pRow.appendChild(slot);
   });
-}
-function renderBench(){
-  benchDiv.innerHTML='';
-  player.bench.forEach((c,i)=>{
-    const d=document.createElement('div');d.className='card clickable';
-    d.innerHTML=`<div class="name">${c.name}</div><div>攻:${c.attack} HP:${c.cur_hp}</div>`;
-    d.onclick=()=>benchToField(i);
-    benchDiv.appendChild(d);
+  const cRow = document.getElementById('cpuBattleRow'); cRow.innerHTML='';
+  match.cpu.battle.forEach((b,idx)=>{
+    const slot = document.createElement('div'); slot.className='battleSlot';
+    if(b){
+      const inner = document.createElement('div'); inner.className='slotCard';
+      inner.innerHTML = `<div style="font-weight:700">${b.name}</div><div class="smallMuted">atk:${b.power}</div>`;
+      slot.appendChild(inner);
+    } else slot.innerHTML = '<div class="smallMuted">空</div>';
+    cRow.appendChild(slot);
   });
-}
-function renderField(){
-  fieldDiv.innerHTML='';
-  player.field.forEach((c,i)=>{
-    const d=document.createElement('div');d.className='card clickable';
-    d.innerHTML=`<div class="name">${c.name} <span class="rarity">${c.rarity}</span></div>
-                 <div>攻:${c.attack} HP:${c.cur_hp}</div>
-                 <div>割:${c.assignedPower} / 必:${c.power_cost}</div>
-                 <div style="margin-top:6px"><button class="small" onclick="assignPower(${i})">+1偉人P</button>
-                 <button class="small" onclick="attemptAttack(${i})">攻撃/技</button>
-                 <button class="small" onclick="attemptSwap(${i})">入れ替え(2P)</button></div>`;
-    fieldDiv.appendChild(d);
+  // hand
+  const handArea = document.getElementById('playerHandUI'); handArea.innerHTML='';
+  match.player.hand.forEach((c,i)=>{
+    const el = document.createElement('div'); el.className='cardUI';
+    el.innerHTML = `<div style="font-weight:700">${c.name}</div><div class="smallMuted">cost:${c.cost}${c.power? ' / atk:'+c.power:''}</div>
+      <div style="margin-top:6px;font-size:13px;color:#222">${c.text}</div>
+      <div style="margin-top:6px"><button class="btn small" onclick="playCardFromHand(${i})">使用</button></div>`;
+    handArea.appendChild(el);
   });
-}
-function renderEnemyField(){
-  enemyFieldDiv.innerHTML='';
-  enemy.field.forEach((c,i)=>{
-    const d=document.createElement('div');d.className='card';
-    d.innerHTML=`<div class="name">${c.name} <span class="rarity">${c.rarity}</span></div>
-                 <div>攻:${c.attack} HP:${c.cur_hp}</div>`;
-    enemyFieldDiv.appendChild(d);
-  });
+  // match log
+  const logEl = document.getElementById('matchLog'); logEl.innerHTML = match.log.map(l=>`<div>${l}</div>`).join('');
+  renderHistory();
 }
 
-// Actions
-function drawFor(playerObj){
-  if(playerObj.deck.length===0) return false;
-  const c = playerObj.deck.shift();
-  // ensure deep clone state for player
-  playerObj.hand = playerObj.hand || [];
-  if(playerObj===player) playerObj.hand.push(c); else playerObj.hand.push(c);
-  return true;
+/* Play card from hand (player) */
+function playCardFromHand(index){
+  if(!match) return;
+  if(match.active !== 'player'){ alert('あなたのターンではありません'); return; }
+  const card = match.player.hand[index];
+  if(!card) return;
+  // determine effective cost (ant cost reduce)
+  let cost = card.cost || 0;
+  if(card.name.includes('アント') && match.player.antCostReduce) cost = Math.max(0, cost - match.player.antCostReduce);
+  if(cost > match.player.mana.current){ alert('マナが足りません'); return; }
+  if(card.type === 'monster'){
+    // find empty slot
+    const slot = match.player.battle.findIndex(b=>b===null);
+    if(slot === -1){ alert('バトルゾーンの空きがありません'); return; }
+    // special ultimate golem handling: requires sacrificing named monsters on field (we check both field and grave? spec said on field)
+    if(card.id === 'M_ULT_GOLEM'){
+      const names = ['ゴーレム','スピードゴーレム','アタックゴーレム'];
+      const present = match.player.battle.filter(b=>b && names.includes(b.name));
+      if(present.length < 3){ alert('アルティメットゴーレムの召喚にはゴーレム系3体が必要です'); return; }
+      // sacrifice one each
+      let used=0;
+      for(let i=0;i<match.player.battle.length && used<3;i++){
+        const b = match.player.battle[i];
+        if(b && names.includes(b.name)){
+          match.player.grave.push(b);
+          match.player.battle[i] = null;
+          used++;
+        }
+      }
+      const newCard = clone(card); newCard.summonSick = false; newCard.attacksLeft = 2; newCard.canActivate = false;
+      match.player.battle[slot] = newCard;
+      match.player.hand.splice(index,1);
+      logMatch('アルティメットゴーレムを特殊召喚した（生贄を捧げた）');
+      updateAllUI();
+      return;
+    }
+    // normal summon
+    match.player.mana.current -= cost;
+    const newCard = clone(card);
+    newCard.summonSick = true; // cannot attack this turn unless effect
+    if(newCard.id === 'M_GOLD_ANT' || newCard.id === 'M_ANT_KING') newCard.canActivate = true;
+    if(newCard.id === 'M_SP_GOLEM') newCard.attacksLeft = 2;
+    match.player.battle[slot] = newCard;
+    match.player.hand.splice(index,1);
+    logMatch('あなたは'+newCard.name+'を召喚した');
+    // handle enter effects
+    handleEnterEffect('player', newCard);
+    updateAllUI();
+  } else if(card.type === 'spell'){
+    match.player.mana.current -= cost;
+    match.player.hand.splice(index,1);
+    match.player.grave.push(card);
+    logMatch('あなたは魔法'+card.name+'を使用した');
+    resolveSpell('player', card);
+    updateAllUI();
+  } else if(card.type === 'field'){
+    if(match.player.field){ alert('既にフィールドが存在します'); return; }
+    match.player.mana.current -= cost;
+    match.player.field = clone(card);
+    match.player.hand.splice(index,1);
+    logMatch('あなたはフィールド'+card.name+'を設置した');
+    updateAllUI();
+  }
 }
 
-// Ensure initial hand has at least one 偉人
-function initialDraw(){
-  player.hand=[]; for(let i=0;i<5;i++) drawFor(player);
-  // if no 偉人 in hand, guarantee one by drawing from deck until get偉人 then replace last card
-  if(!player.hand.some(c=>c.type==='偉人')){
-    for(let i=0;i<player.deck.length;i++){
-      if(player.deck[i].type==='偉人'){
-        player.hand[0]=player.deck.splice(i,1)[0];break;
+/* handle enter/trigger effects for certain cards */
+function handleEnterEffect(side, card){
+  if(!card || !card.text) return;
+  if(card.id === 'M_SLIME'){
+    const deck = match[side].deck;
+    const idx = deck.findIndex(id=> findCardById(id).name.includes('スライム'));
+    if(idx!==-1){
+      const found = findCardById(deck.splice(idx,1)[0]);
+      match[side].hand.push(found);
+      logMatch((side==='player'?'あなた':'CPU')+'はデッキから'+found.name+'をサーチした');
+    }
+  }
+  if(card.id === 'M_ANT'){
+    const deck = match[side].deck;
+    const idx = deck.findIndex(id=> findCardById(id).name === 'アントα');
+    if(idx!==-1){
+      const found = findCardById(deck.splice(idx,1)[0]);
+      match[side].hand.push(found);
+      logMatch((side==='player'?'あなた':'CPU')+'はデッキから'+found.name+'を手札に加えた');
+    }
+  }
+  if(card.id === 'M_ANT_A'){
+    const deck = match[side].deck;
+    const idx = deck.findIndex(id=> findCardById(id).name.includes('アント') && findCardById(id).name !== 'アントα');
+    if(idx!==-1){
+      const found = findCardById(deck.splice(idx,1)[0]);
+      match[side].hand.push(found);
+      logMatch((side==='player'?'あなた':'CPU')+'はデッキから'+found.name+'を手札に加えた');
+    }
+  }
+}
+
+/* Resolve spells (simplified but functional) */
+function resolveSpell(side, spell){
+  const opp = side==='player' ? 'cpu' : 'player';
+  switch(spell.id){
+    case 'S_LIGHTNING': {
+      // choose strongest opponent monster if exists
+      const candidates = match[opp].battle.map((b,idx)=> b ? {b,idx} : null).filter(Boolean);
+      if(candidates.length===0){ logMatch('雷撃の対象がいませんでした'); return; }
+      // pick highest power
+      candidates.sort((a,b)=> (b.b.power||0)-(a.b.power||0));
+      const removed = candidates[0].b;
+      match[opp].grave.push(removed);
+      match[opp].battle[candidates[0].idx] = null;
+      logMatch((side==='player'?'あなた':'相手')+'の雷撃で'+removed.name+'を破壊した');
+      break;
+    }
+    case 'S_RELIC': {
+      if(match[side].grave.length>0){
+        const c = match[side].grave.pop();
+        match[side].hand.push(clone(c));
+        logMatch((side==='player'?'あなた':'相手')+'は亡者の遺品で'+c.name+'を手札に戻した');
+      } else logMatch('墓地にカードがありません');
+      break;
+    }
+    case 'S_DARK_SAC': {
+      // sacrifice own lowest-power monster and reduce one opponent monster by that amount
+      const ownCandidates = match[side].battle.map((b,idx)=> b ? {b,idx} : null).filter(Boolean);
+      const oppCandidates = match[opp].battle.map((b,idx)=> b ? {b,idx} : null).filter(Boolean);
+      if(ownCandidates.length===0 || oppCandidates.length===0){ logMatch('ダークサクリファイスの対象が揃っていません'); return; }
+      ownCandidates.sort((a,b)=> (a.b.power||0)-(b.b.power||0));
+      oppCandidates.sort((a,b)=> (b.b.power||0)-(a.b.power||0));
+      const sac = ownCandidates[0];
+      const targ = oppCandidates[0];
+      match[side].grave.push(sac.b);
+      match[side].battle[sac.idx] = null;
+      match[opp].battle[targ.idx].power = Math.max(0, (match[opp].battle[targ.idx].power||0) - (sac.b.power||0));
+      logMatch((side==='player'?'あなた':'相手')+'は'+sac.b.name+'を捧げ、'+targ.b.name+'の攻撃力を'+sac.b.power+'減少させた');
+      break;
+    }
+    case 'S_ANT_EGG': {
+      for(let k=0;k<2;k++){
+        const idx = match[side].deck.findIndex(id=> findCardById(id).name.includes('アント'));
+        if(idx!==-1){
+          const found = findCardById(match[side].deck.splice(idx,1)[0]);
+          match[side].hand.push(found);
+          logMatch((side==='player'?'あなた':'相手')+'はアントの卵で'+found.name+'を手札に加えた');
+        }
+      }
+      shuffle(match[side].deck);
+      break;
+    }
+    case 'S_ANT_RETAL': {
+      match[side].battle.forEach(b=>{ if(b && b.name.includes('アント')) b.power = (b.power||0)+1; });
+      // mark a revert flag
+      match[side].antRetalActive = true;
+      logMatch((side==='player'?'あなた':'相手')+'のアント達の攻撃力が+1された（ターン終了で戻る）');
+      break;
+    }
+    case 'S_ANT_GROW': {
+      match[side].antCostReduce = (match[side].antCostReduce||0)+1;
+      logMatch((side==='player'?'あなた':'相手')+'はアントの育成でアントのコストを-1した（今ターン）');
+      break;
+    }
+    case 'S_SNIP': {
+      const idx = match[opp].battle.findIndex(b=> b && (b.power||0) <= 4);
+      if(idx!==-1){
+        const removed = match[opp].battle[idx];
+        match[opp].grave.push(removed);
+        match[opp].battle[idx] = null;
+        logMatch((side==='player'?'あなた':'相手')+'は狙い撃ちで'+removed.name+'を墓地へ送った');
+      } else logMatch('狙い撃ちの対象が見つかりませんでした');
+      break;
+    }
+    case 'S_RESEARCH': {
+      if(match[side].researched){ logMatch('博士の研究は今ターン既に使われました'); return; }
+      drawFor(side); drawFor(side);
+      match[side].researched = true;
+      logMatch((side==='player'?'あなた':'相手')+'は博士の研究で2枚ドローした');
+      break;
+    }
+    case 'S_MAGIC_SEARCH': {
+      const idx = match[side].deck.findIndex(id=> findCardById(id).type === 'spell');
+      if(idx!==-1){
+        const found = findCardById(match[side].deck.splice(idx,1)[0]);
+        match[side].hand.push(found);
+        logMatch((side==='player'?'あなた':'相手')+'は魔法1枚をサーチした');
+      } else logMatch('魔法が見つかりませんでした');
+      break;
+    }
+    case 'S_MONSTER_SEARCH': {
+      const idx = match[side].deck.findIndex(id=> findCardById(id).type === 'monster');
+      if(idx!==-1){
+        const found = findCardById(match[side].deck.splice(idx,1)[0]);
+        match[side].hand.push(found);
+        logMatch((side==='player'?'あなた':'相手')+'はモンスターを1枚サーチした');
+      } else logMatch('モンスターが見つかりませんでした');
+      break;
+    }
+    case 'S_ANT_AWAKEN': {
+      match[side].battle.forEach(b=>{ if(b && b.name.includes('アント')) b.summonSick = false; });
+      logMatch((side==='player'?'あなた':'相手')+'はアントの覚醒で召喚酔いを解除した');
+      break;
+    }
+    default:
+      logMatch('未実装の魔法効果: '+spell.name);
+  }
+}
+
+/* handle end-phase triggers */
+function resolveEndPhase(side){
+  // resolve monster end-of-turn effects: OniJin and Necro
+  match[side].battle.forEach((c,idx)=>{
+    if(!c) return;
+    if(c.id === 'M_ONIJIN'){
+      // choose first opponent monster with atk <= c.power
+      const opp = side==='player' ? match.cpu : match.player;
+      const candidates = opp.battle.map((b,i)=> b && (b.power||0) <= (c.power||0) ? i : -1).filter(v=>v!==-1);
+      if(candidates.length>0){
+        const chosenIdx = candidates[0];
+        const removed = opp.battle[chosenIdx];
+        opp.grave.push(removed);
+        opp.battle[chosenIdx] = null;
+        logMatch((side==='player'?'あなた':'相手')+'の鬼人で'+removed.name+'を墓地へ送った');
+      }
+    }
+    if(c.id === 'M_NECRO'){
+      const g = match[side].grave;
+      if(g.length>0){
+        const idx = Math.floor(Math.random()*g.length);
+        const card = g.splice(idx,1)[0];
+        // place if slot available
+        const slot = match[side].battle.findIndex(b=>b===null);
+        if(slot!==-1){
+          card.summonSick = true;
+          match[side].battle[slot] = card;
+          logMatch((side==='player'?'あなた':'相手')+'のネクロマンサーが'+card.name+'を蘇生した');
+        } else {
+          g.push(card);
+        }
+      }
+    }
+  });
+  // field effects (if player's own field is certain ones)
+  // We interpret F_HAPPY_M (both draw 1), F_LOST_FOREST (both return random from grave to hand)
+  if(match.player.field && match.player.field.id === 'F_HAPPY_M'){
+    drawFor('player'); drawFor('cpu'); logMatch('ハッピーマウンテン効果：両者1枚ドロー');
+  }
+  if(match.player.field && match.player.field.id === 'F_LOST_FOREST'){
+    ['player','cpu'].forEach(s=>{
+      if(match[s].grave.length>0){
+        const idx = Math.floor(Math.random()*match[s].grave.length);
+        const c = match[s].grave.splice(idx,1)[0];
+        match[s].hand.push(c);
+        logMatch((s==='player'?'あなた':'相手')+'は亡者の森で'+c.name+'を手札に戻した');
+      }
+    });
+  }
+  // revert ephemeral buffs like antRetal
+  if(match.player.antRetalActive){
+    // revert: we simply subtract 1 from any ant that got buffed - note: may slightly under/over if other buffs changed, but acceptable for prototype
+    match.player.battle.forEach(b=>{ if(b && b.name.includes('アント')) b.power = Math.max(0,(b.power||0)-1); });
+    match.player.antRetalActive = false;
+  }
+  if(match.cpu.antRetalActive){
+    match.cpu.battle.forEach(b=>{ if(b && b.name.includes('アント')) b.power = Math.max(0,(b.power||0)-1); });
+    match.cpu.antRetalActive = false;
+  }
+  // advance turn count and mana
+  match.turn++;
+  updateManaForMatch();
+}
+
+/* Player attack flow: select attacker slot */
+let selectedAttackerSlot = null;
+function onPlayerAttack(slotIdx){
+  if(!match) return;
+  if(match.active !== 'player'){ alert('あなたのターンではありません'); return; }
+  const mon = match.player.battle[slotIdx];
+  if(!mon){ alert('そのスロットにモンスターはいません'); return; }
+  if(mon.summonSick){ alert('このターンは召喚酔いしています'); return; }
+  selectedAttackerSlot = slotIdx;
+  logMatch('攻撃する相手を選択してください（相手モンスターをクリック、またはダイレクト）');
+  // make cpu slots clickable
+  const cpuSlots = document.getElementById('cpuBattleRow').children;
+  for(let i=0;i<cpuSlots.length;i++){
+    cpuSlots[i].classList.add('targetable');
+    cpuSlots[i].onclick = ()=> playerAttackTarget(i);
+  }
+  // allow direct attack checking
+  const canDirect = match.cpu.battle.every(s=>s===null) && match.cpu.shield === 0;
+  if(canDirect){
+    if(confirm('条件を満たしています。相手にダイレクトアタックして勝利しますか？（OKで実行）')){
+      alert('ダイレクトアタック成功！あなたの勝利です！');
+      resetToMenu();
+      return;
+    }
+  }
+}
+function playerAttackTarget(targetIdx){
+  if(selectedAttackerSlot === null) return;
+  const attacker = match.player.battle[selectedAttackerSlot];
+  const defender = match.cpu.battle[targetIdx];
+  if(!attacker || !defender){ logMatch('不正な攻撃対象'); clearAttackTargets(); return; }
+  const a = attacker.power || 0;
+  const d = defender.power || 0;
+  if(a > d){
+    match.cpu.grave.push(defender); match.cpu.battle[targetIdx] = null;
+    logMatch(attacker.name+'('+a+') は '+defender.name+'('+d+') を破壊した');
+  } else if(a < d){
+    match.player.grave.push(attacker); match.player.battle[selectedAttackerSlot] = null;
+    logMatch(attacker.name+'('+a+') は '+defender.name+'('+d+') に敗れ、墓地へ');
+  } else {
+    match.cpu.grave.push(defender); match.cpu.battle[targetIdx] = null;
+    match.player.grave.push(attacker); match.player.battle[selectedAttackerSlot] = null;
+    logMatch(attacker.name+' と '+defender.name+' は互いに消滅した');
+  }
+  clearAttackTargets();
+  updateAllUI();
+}
+function clearAttackTargets(){
+  selectedAttackerSlot = null;
+  const cpuSlots = document.getElementById('cpuBattleRow').children;
+  for(let i=0;i<cpuSlots.length;i++){
+    cpuSlots[i].classList.remove('targetable'); cpuSlots[i].onclick = null;
+  }
+}
+
+/* Player activate effect from slot (Gold Ant / Ant King) */
+function onPlayerActivate(slotIdx){
+  const card = match.player.battle[slotIdx];
+  if(!card || !card.canActivate) return;
+  if(card.id === 'M_GOLD_ANT'){
+    // search deck for ant or ant alpha
+    const idx = match.player.deck.findIndex(id=> findCardById(id).name.includes('アント'));
+    if(idx!==-1){
+      const found = findCardById(match.player.deck.splice(idx,1)[0]);
+      const s = match.player.battle.findIndex(b=>b===null);
+      if(s!==-1){
+        found.summonSick = false;
+        match.player.battle[s] = found;
+        logMatch('ゴールドアントで'+found.name+'を場に召喚（召喚酔い無し）');
+      } else {
+        logMatch('場に空きがないため召喚できませんでした');
+      }
+    } else logMatch('デッキにアントが見つかりません');
+    card.canActivate = false;
+    updateAllUI();
+  }
+  if(card.id === 'M_ANT_KING'){
+    const ants = match.player.grave.filter(c=> c.name.includes('アント'));
+    if(ants.length===0){ logMatch('墓地にアントがいません'); return; }
+    const toRes = ants.slice(0,2);
+    toRes.forEach(r=>{
+      const s = match.player.battle.findIndex(b=>b===null);
+      if(s!==-1){
+        // remove from grave
+        const idx = match.player.grave.findIndex(g=>g === r);
+        const rc = match.player.grave.splice(idx,1)[0];
+        rc.summonSick = false;
+        match.player.battle[s] = rc;
+        logMatch('アントキングで'+rc.name+'を墓地から召喚（召喚酔い無し）');
+      }
+    });
+    card.canActivate = false; updateAllUI();
+  }
+}
+
+/* CPU logic (moderate intelligence) */
+function cpuTakeTurn(){
+  if(!match) return;
+  logMatch('---- CPUのターン開始 ----');
+  // set active
+  match.active = 'cpu';
+  // draw
+  drawFor('cpu');
+  // update mana
+  updateManaForMatch();
+  // play field if none
+  const cpu = match.cpu;
+  // order: play highest-priority spells (removal/board) if beneficial, then play monsters by priority (power/cost)
+  // simple heuristics:
+  // 1) If CPU has removal (lightning/snip) and player has strong target, use it
+  const playerStrong = match.player.battle.filter(b=>b).sort((a,b)=> (b.power||0)-(a.power||0))[0];
+  // evaluate spells playable
+  const playableSpells = cpu.hand.filter(c=> c.type==='spell' && (c.cost||0) <= cpu.mana.current);
+  // removal preference
+  const lightningIdx = playableSpells.findIndex(s=> s.id === 'S_LIGHTNING');
+  if(lightningIdx !== -1 && playerStrong){
+    // use lightning
+    const sp = playableSpells[lightningIdx];
+    cpu.mana.current -= sp.cost;
+    cpu.hand.splice(cpu.hand.findIndex(h=>h.id===sp.id),1);
+    cpu.grave.push(sp);
+    resolveSpell('cpu', sp);
+  }
+  // snip for small threats
+  const snipIdx = playableSpells.findIndex(s=> s.id === 'S_SNIP');
+  if(snipIdx !== -1){
+    const small = match.player.battle.find(b=> b && (b.power||0) <= 4);
+    if(small){
+      const sp = playableSpells[snipIdx];
+      cpu.mana.current -= sp.cost;
+      cpu.hand.splice(cpu.hand.findIndex(h=>h.id===sp.id),1);
+      cpu.grave.push(sp);
+      resolveSpell('cpu', sp);
+    }
+  }
+  // research if low on cards and has cost 1 research and hasn't used
+  const researchIdx = playableSpells.findIndex(s=> s.id === 'S_RESEARCH');
+  if(researchIdx !== -1 && cpu.hand.length < 3 && !cpu.researched){
+    const sp = playableSpells[researchIdx];
+    cpu.mana.current -= sp.cost;
+    cpu.hand.splice(cpu.hand.findIndex(h=>h.id===sp.id),1);
+    cpu.grave.push(sp);
+    resolveSpell('cpu', sp);
+  }
+  // place field if none and affordable
+  const fieldIdx = cpu.hand.findIndex(c=> c.type==='field' && (c.cost||0) <= cpu.mana.current);
+  if(fieldIdx !== -1 && !cpu.field){
+    const f = cpu.hand.splice(fieldIdx,1)[0];
+    cpu.mana.current -= f.cost;
+    cpu.field = f;
+    logMatch('CPUはフィールド'+f.name+'を設置した');
+  }
+  // summon monsters greedily by value (power per cost), prefer highest power fitting mana and slot
+  const monsterCandidates = cpu.hand.filter(c=> c.type==='monster' && (c.cost||0) <= cpu.mana.current);
+  monsterCandidates.sort((a,b)=> ((b.power||0)/(b.cost||1)) - ((a.power||0)/(a.cost||1)));
+  for(const m of monsterCandidates){
+    const slot = cpu.battle.findIndex(s=>s===null);
+    if(slot===-1) break;
+    // special handling: if Ultimate Golem possible via sacrifices on field, CPU may attempt if has the pieces
+    if(m.id === 'M_ULT_GOLEM'){
+      const names = ['ゴーレム','スピードゴーレム','アタックゴーレム'];
+      const present = cpu.battle.filter(b=>b && names.includes(b.name));
+      if(present.length < 3) continue;
+      // sacrifice and summon
+      let used=0;
+      for(let i=0;i<cpu.battle.length && used<3;i++){
+        const b = cpu.battle[i];
+        if(b && names.includes(b.name)){
+          cpu.grave.push(b);
+          cpu.battle[i]=null; used++;
+        }
+      }
+      const newCard = clone(m); newCard.summonSick = false; newCard.attacksLeft = 2;
+      cpu.battle[slot] = newCard;
+      // remove card from hand (one instance)
+      const idx = cpu.hand.findIndex(h=>h.id===m.id);
+      if(idx!==-1) cpu.hand.splice(idx,1);
+      logMatch('CPUはアルティメットゴーレムを特殊召喚した');
+      continue;
+    }
+    // normal summon
+    cpu.mana.current -= m.cost;
+    const idx = cpu.hand.findIndex(h=>h.id===m.id);
+    const newCard = clone(m); newCard.summonSick = true;
+    if(newCard.id === 'M_GOLD_ANT' || newCard.id === 'M_ANT_KING') newCard.canActivate = true;
+    cpu.battle[slot] = newCard;
+    if(idx!==-1) cpu.hand.splice(idx,1);
+    logMatch('CPUは'+m.name+'を召喚した');
+  }
+  // CPU activate possible activations like Gold Ant / Ant King (simple)
+  cpu.battle.forEach((b,idx)=>{
+    if(b && b.canActivate){
+      if(b.id === 'M_GOLD_ANT'){
+        const idd = cpu.deck.findIndex(id=> findCardById(id).name.includes('アント'));
+        if(idd!==-1){
+          const found = findCardById(cpu.deck.splice(idd,1)[0]);
+          const s = cpu.battle.findIndex(x=>x===null);
+          if(s!==-1){
+            found.summonSick=false; cpu.battle[s]=found;
+            logMatch('CPUがゴールドアントの効果で'+found.name+'を召喚（召喚酔い無し）');
+          }
+        }
+        b.canActivate = false;
+      }
+      if(b.id === 'M_ANT_KING'){
+        const ants = cpu.grave.filter(c=> c.name.includes('アント'));
+        if(ants.length>0){
+          const toRes = ants.slice(0,2);
+          toRes.forEach(r=>{
+            const s = cpu.battle.findIndex(x=>x===null);
+            if(s!==-1){
+              const idx = cpu.grave.findIndex(g=>g === r);
+              const rc = cpu.grave.splice(idx,1)[0]; rc.summonSick=false; cpu.battle[s]=rc;
+              logMatch('CPUがアントキングで'+rc.name+'を蘇生（召喚酔い無し）');
+            }
+          });
+        }
+        b.canActivate=false;
+      }
+    }
+  });
+
+  // CPU attacks: for each monster without summonSick, attack using heuristics
+  for(let i=0;i<cpu.battle.length;i++){
+    const mon = cpu.battle[i];
+    if(!mon) continue;
+    if(mon.summonSick){ mon.summonSick = false; continue; } // cannot attack this turn, but remove sickness
+    // if player has monsters, target weakest advantageous
+    const playerTargets = match.player.battle.map((b,idx)=> b ? {b,idx} : null).filter(Boolean);
+    if(playerTargets.length>0){
+      // choose a target where mon.power >= target.power if possible
+      let pick = playerTargets.find(pt => (mon.power||0) >= (pt.b.power||0));
+      if(!pick) pick = playerTargets.reduce((acc,cur)=> (cur.b.power<acc.b.power?cur:acc), playerTargets[0]);
+      // resolve
+      const a = mon.power||0; const d = pick.b.power||0;
+      if(a > d){ match.player.grave.push(pick.b); match.player.battle[pick.idx]=null; logMatch('CPUの'+mon.name+'が'+pick.b.name+'を破壊した'); }
+      else if(a < d){ match.cpu.grave.push(mon); match.cpu.battle[i]=null; logMatch('CPUの'+mon.name+'は'+pick.b.name+'に敗れた'); }
+      else { match.player.grave.push(pick.b); match.player.battle[pick.idx]=null; match.cpu.grave.push(mon); match.cpu.battle[i]=null; logMatch('CPUの'+mon.name+'と'+pick.b.name+'は互いに消滅した'); }
+    } else {
+      // attempt direct or damage shield
+      if(match.player.shield === 0){
+        alert('CPUがダイレクトアタックに成功しました。あなたの敗北です。');
+        resetToMenu(); return;
+      } else {
+        match.player.shield = Math.max(0, match.player.shield - 1);
+        logMatch('CPUの'+mon.name+'が攻撃し、あなたのシールドを1枚破壊した');
       }
     }
   }
+
+  // Resolve CPU end-phase triggers
+  resolveEndPhase('cpu');
+
+  // switch back to player
+  match.active = 'player';
+  // advance round-related mana changes already handled in resolveEndPhase (we incremented turn)
+  // Player start: draw and refill mana
+  drawFor('player');
+  updateAllUI();
+  logMatch('---- あなたのターン開始 ----');
 }
 
-function playToBench(handIndex){
-  const c = player.hand[handIndex];
-  if(!c) return; if(c.type!=='偉人'){alert('現在は偉人のみを手札からベンチに置けます');return}
-  if(player.bench.length>=3){alert('ベンチは3枚まで');return}
-  player.bench.push(c); player.hand.splice(handIndex,1); renderHand(); renderBench(); log(`${c.name} をベンチに配置`); updateInfo();
-}
-
-function benchToField(idx){
-  if(player.field.length>=3){alert('場は最大3枚です');return}
-  if(benchBlockForTurn){alert('現在ベンチから場へ出すことは封じられています（大返し効果）');return}
-  const c=player.bench[idx]; if(!c) return;
-  player.field.push(c); player.bench.splice(idx,1); renderBench(); renderField(); log(`${c.name} を場に出した`); updateInfo();
-}
-
-function assignPower(fieldIdx){
-  if(player.power<=0){alert('偉人パワーがありません');return}
-  const c=player.field[fieldIdx]; if(!c) return;
-  player.power--; c.assignedPower++; renderField(); updateInfo(); log(`${c.name} に偉人パワー1を割り当てた`);
-}
-
-function attemptSwap(fieldIdx){
-  if(player.power<2){alert('偉人パワーが2必要です');return}
-  if(player.bench.length===0){alert('ベンチにカードがありません');return}
-  // swap with first bench card for simplicity, but let user confirm
-  const f = player.field[fieldIdx]; const b = player.bench[0];
-  if(!f||!b) return; player.power-=2; player.field[fieldIdx]=b; player.bench[0]=f; renderField(); renderBench(); updateInfo(); log(`${f.name} と ${b.name} を入れ替えた（偉人P -2）`);
-}
-
-// Attack / skill execution
-function attemptAttack(fieldIdx){
-  const attacker = player.field[fieldIdx]; if(!attacker) return;
-  // require assignedPower >= power_cost to perform skill/attack
-  if(attacker.assignedPower < attacker.power_cost){
-    if(!confirm('偉人パワーがコスト分割り当てられていません。通常攻撃（攻撃力分）でよければ実行しますか？')) return;
-    normalAttackFrom(fieldIdx);
-    return;
+/* ========== helper functions when match inactive ========== */
+function populateDecksOnStartup(){
+  // ensure if no saved decks exist, create a default sample deck (auto fill with pool up to 50)
+  if(savedDecks.length===0){
+    // produce default deck: 50 by repeating base pool until 50, respecting 4 copies
+    let poolIds = [];
+    CARD_POOL.forEach(c=>{ for(let i=0;i<4;i++) poolIds.push(c.id); });
+    shuffle(poolIds);
+    const deck = poolIds.slice(0,50);
+    const name = 'Default_AutoDeck';
+    savedDecks.push({name, cards: deck});
+    saveSavedDecks();
   }
-  // consume cost
-  attacker.assignedPower -= attacker.power_cost;
-  attacker.usedSkillThisTurn = true;
-  useSkill(attacker, true);
+  renderSavedDecksList();
+}
+function populateStartEditor(){
+  // if currentBuild is empty, fill with a sample 50-card set (respect 4 copies)
+  if(currentBuild.length===0){
+    const pool = [];
+    CARD_POOL.forEach(c=>{ for(let i=0;i<4;i++) pool.push(c.id); });
+    shuffle(pool);
+    currentBuild = pool.slice(0,50);
+  }
+  renderDeckList();
 }
 
-function normalAttackFrom(fieldIdx){
-  const attacker = player.field[fieldIdx]; if(!attacker) return;
-  // choose target: enemy field first if exists: choose first, else direct
-  if(enemy.field.length>0){
-    const target = enemy.field[0];
-    applyDamageToCard(target, attacker.attack, attacker);
-    log(`${attacker.name} が ${target.name} を攻撃（${attacker.attack}）`);
-    if(target.cur_hp<=0){
-      log(`${target.name} を破壊した`); enemy.field.splice(0,1); enemy.grave.push(target);
-    }
-  } else {
-    enemy.hp -= attacker.attack; log(`${attacker.name} が相手に直接 ${attacker.attack} ダメージ`);
-    if(enemy.hp<=0){endGame('win');}
-  }
-  renderEnemyField(); renderField(); updateInfo();
+/* on load */
+window.addEventListener('load', ()=>{
+  populateDecksOnStartup();
+  populateStartEditor();
+  showView('viewMenu');
+});
+
+/* Small helpers for UI actions */
+function populateDeckSelect(){
+  // ensure options updated
+  const sel = document.getElementById('deckSelect');
+  sel.innerHTML = '';
+  const none = document.createElement('option'); none.value='__none__'; none.textContent='-- 選択 --'; sel.appendChild(none);
+  savedDecks.forEach(d=>{ const o = document.createElement('option'); o.value=d.name; o.textContent=d.name; sel.appendChild(o); });
 }
 
-function applyDamageToCard(target, dmg, source){
-  // consider modifiers: e.g., 明智 vs 織田 hidden
-  if(source && source.name==='明智光秀' && target.name==='織田信長') dmg += 10000;
-  // Tokugawa reduces incoming attack via trait: if target is on player's side earlier handled
-  target.cur_hp -= dmg;
+/* reset everything from match (called on match end) */
+function resetMatchState(){
+  match=null;
+  updateAllUI();
 }
 
-function useSkill(card, isPlayer){
-  // many skills are described in natural language; we'll implement behaviors for the specific cards provided.
-  const name = card.name;
-  if(name==='織田信長'){
-    // 人間五十年 — 相手のトラップ影響を無視して直接攻撃可能: simply do a normal attack ignoring trap flags (traps not implemented), do direct hit to first enemy field or direct
-    if(enemy.field.length>0){
-      const target=enemy.field[0]; applyDamageToCard(target, card.attack, card); log(`${card.name} が《人間五十年》で ${target.name} を攻撃（${card.attack}）`);
-      if(target.cur_hp<=0){log(`${target.name} を破壊`); enemy.grave.push(target); enemy.field.splice(0,1);}      
-    } else {enemy.hp -= card.attack; log(`${card.name} が敵に直接 ${card.attack} ダメージ（トラップ無視）`); if(enemy.hp<=0) endGame('win');}
-  }
-  else if(name==='豊臣秀吉'){
-    // 大返し: 相手に2回ダメージ。 if first destroys target偉人, prevent bench deployment and extra direct damage
-    if(enemy.field.length>0){
-      let target=enemy.field[0];
-      applyDamageToCard(target, card.attack, card); log(`${card.name} の《大返し》1回目: ${target.name} に ${card.attack}`);
-      if(target.cur_hp<=0){ log(`1回目で ${target.name} を破壊`); enemy.field.splice(0,1); enemy.grave.push(target); benchBlockForTurn=true; log(`相手はベンチから出せなくなった（大返し効果）`);
-        // apply second hit to player's enemy directly
-        enemy.hp -= card.attack; log(`大返しの2回目は直接ダメージ ${card.attack}`);
-        if(enemy.hp<=0) endGame('win');
-      } else {
-        // second hit to remaining target (or if survived, apply again)
-        applyDamageToCard(target, card.attack, card); log(`${card.name} の《大返し》2回目: ${target.name} に ${card.attack}`);
-        if(target.cur_hp<=0){enemy.grave.push(target); enemy.field.splice(0,1); log(`${target.name} を破壊`);}      }
-    } else {
-      // no enemy field -> two direct hits
-      enemy.hp -= card.attack*2; log(`${card.name} の《大返し》で敵に ${card.attack*2} ダメージ（直接）`); if(enemy.hp<=0) endGame('win');
-    }
-  }
-  else if(name==='徳川家康'){
-    // 三つ葵：対象の攻撃力を-100
-    if(enemy.field.length>0){ const t=enemy.field[0]; t.attack = Math.max(0,t.attack-100); log(`${card.name} の《三つ葵》で ${t.name} の攻撃力が-100された`);} else { log(`${card.name} の《三つ葵》は対象がいないため発動できません`); }
-  }
-  else if(name==='明智光秀'){
-    // 桔梗紋: 自分のベンチにいる明智姓の人数✖️1000のダメージを敵に（場またはプレイヤー）
-    const cnt = player.bench.filter(x=>x.name && x.name.startsWith('明智')).length;
-    const dmg = cnt*1000 + card.attack;
-    if(enemy.field.length>0){ const t=enemy.field[0]; applyDamageToCard(t,dmg,card); log(`${card.name} の《桔梗紋》で ${t.name} に ${dmg} ダメージ`); if(t.cur_hp<=0){enemy.grave.push(t); enemy.field.splice(0,1); log(`${t.name} を破壊`);} }
-    else { enemy.hp -= dmg; log(`${card.name} の《桔梗紋》で敵に ${dmg} ダメージ`); if(enemy.hp<=0) endGame('win'); }
-  }
-  else if(name==='武田信玄'){
-    // 風林火山: 自分の受けるダメージが20ずつ減る（stack）。 We'll store a buff on card
-    card._damageReduction = (card._damageReduction||0) + 20; log(`${card.name} の《風林火山》で受けるダメージが20減少（累積）`);
-  }
-  else if(name==='上杉謙信'){
-    // 毘沙門天: 自分の与ダメが20増える（stack)
-    card._damageBonus = (card._damageBonus||0) + 20; log(`${card.name} の《毘沙門天》で与ダメが20増加（累積）`);
-  }
-  else if(name==='毛利元就'){
-    // 謀: 単純ダメージ = attack
-    if(enemy.field.length>0){const t=enemy.field[0]; applyDamageToCard(t,card.attack,card); log(`${card.name} の《謀》で ${t.name} に ${card.attack} ダメージ`); if(t.cur_hp<=0){enemy.field.splice(0,1);enemy.grave.push(t);log(`${t.name} を破壊`)} } else {enemy.hp -= card.attack; log(`${card.name} の《謀》で敵に ${card.attack} ダメージ`); if(enemy.hp<=0) endGame('win');}
-  }
-  else if(name==='ナポレオン'){
-    // 革命: 相手のレアリティが下から何番目か✖️100ダメージ
-    if(enemy.field.length>0){ const t = enemy.field[0]; const rarities=['C','R','EX','SR','SSR','UR']; const idx = rarities.indexOf(t.rarity); const pos = (idx>=0? idx+1:3); const dmg = pos*100; applyDamageToCard(t,dmg,card); log(`${card.name} の《革命》で ${t.name} に ${dmg} ダメージ（レアリティ計算）`); if(t.cur_hp<=0){enemy.field.splice(0,1);enemy.grave.push(t);log(`${t.name} を破壊`)} } else { log('革命の対象がいません'); }
-  }
-  // other generic/default: perform normal attack
-  else { normalAttackFrom(player.field.indexOf(card)); }
-  renderField(); renderEnemyField(); updateInfo();
-}
-
-// Damage application helper with reductions and bonuses
-function computeDamage(base, source, target){
-  let dmg = base;
-  if(source && source._damageBonus) dmg += source._damageBonus;
-  if(target && target._damageReduction) dmg = Math.max(0, dmg - target._damageReduction);
-  return dmg;
-}
-
-// Turn progression
-function startPlayerTurn(){
-  playerTurn = true; turn++;
-  // reset per-turn flags
-  player.field.forEach(c=>{c.usedTraitThisTurn=false; c.usedSkillThisTurn=false;});
-  // gain偉人パワー
-  player.power += 1;
-  // draw one card
-  if(!drawFor(player)){ log('山札が空です — ドローできません'); }
-  // Tokugawa trait heal
-  const tok = player.field.find(c=>c.name==='徳川家康');
-  if(tok){ const heal = player.bench.length * 100; player.hp = Math.min(10000, player.hp + heal); if(heal>0) log(`徳川家康の特性で ${heal} HP 回復`); }
-  // reset benchBlock
-  benchBlockForTurn=false;
-  renderHand(); renderBench(); renderField(); renderEnemyField(); updateInfo();
-}
-
-function endTurn(){
-  // check win/lose
-  if(player.hp<=0) {endGame('lose'); return}
-  if(enemy.hp<=0) {endGame('win'); return}
-  // enemy behaves simply: draw, place to bench if possible, possibly move to field, then attack
-  enemyAIAction();
-  // enemy turn effects: e.g., 毛利の厳島 coin toss on player's turn start — earlier defined for opponent; we execute at appropriate times
-  // back to player
-  startPlayerTurn();
-}
-
-function endGame(result){
-  if(result==='win'){ alert('あなたの勝ち！'); log('=== 勝利 ==='); }
-  else { alert('あなたの負け...'); log('=== 敗北 ==='); }
-  // lock UI by disabling buttons
-}
-
-// Simple enemy AI
-function enemyAIAction(){
-  // enemy draws one if possible
-  if(enemy.deck.length>0){ const c=enemy.deck.shift(); enemy.bench.push(c); log(`敵がカードをベンチに配置しました (${c.name})`);}  
-  // move first bench to field if space
-  if(enemy.bench.length>0 && enemy.field.length<3){ const c=enemy.bench.shift(); enemy.field.push(c); log(`敵が ${c.name} を場に出した`); }
-  // attack with first field card
-  if(enemy.field.length>0){ const a = enemy.field[0]; // if has assignedPower logic for enemy ignore: simple normal attack
-    if(player.field.length>0){ const t = player.field[0]; const dmg = a.attack; // consider 武田/上杉 reductions/bonus
-      const final = computeDamage(dmg, a, t);
-      t.cur_hp -= final; log(`敵の ${a.name} が ${t.name} を攻撃: ${final}`);
-      if(t.cur_hp<=0){ log(`${t.name} を破壊された`); player.grave.push(t); player.field.splice(0,1); }
-    } else { player.hp -= a.attack; log(`敵の ${a.name} があなたに直接 ${a.attack} ダメージ`); if(player.hp<=0) endGame('lose'); }
-  }
-  renderEnemyField(); renderField(); updateInfo();
-}
-
-// Buttons
-document.getElementById('endTurn').onclick = ()=>{ endTurn(); };
-document.getElementById('coinToss').onclick = ()=>{
-  const r = Math.random() < 0.5 ? '表(先攻)' : '裏(後攻)'; coinTossResult = r; alert('コイントス: '+r); log('コイントス: '+r);
-};
-document.getElementById('reset').onclick = ()=>{ initGame(); };
-
-// Initialization
-function initGame(){
-  player = {hp:10000,deck:buildDeck(),hand:[],bench:[],field:[],power:0,grave:[]};
-  enemy = {hp:10000,deck:buildDeck(),bench:[],field:[],grave:[]};
-  turn=0; logDiv.innerHTML=''; benchBlockForTurn=false; coinTossResult=null;
-  initialDraw(); renderHand(); renderBench(); renderField(); renderEnemyField(); updateInfo(); log('ゲームを初期化しました');
-}
-
-// Expose functions used in generated HTML buttons inside card markup
-window.assignPower = assignPower;
-window.attemptAttack = attemptAttack;
-window.attemptSwap = attemptSwap;
-
-initGame();
+/* initial render of editor UI */
+renderAllCards();
+renderDeckList();
+renderSavedDecksUI();
+renderSavedDecksList();
 </script>
 </body>
 </html>
